@@ -229,4 +229,26 @@ export async function gameRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ message: 'Impossible de récupérer l\'historique.' });
     }
   });
+
+  /**
+   * POST /api/games/:gameId/confirm — Confirme avoir vu la réponse de l'autre joueur
+   * Recharge l'état et le diffuse aux deux joueurs pour passer au tour suivant
+   */
+  fastify.post<{ Params: { gameId: string } }>('/api/games/:gameId/confirm', async (request, reply) => {
+    const ip = request.ip || 'unknown';
+    if (!checkRate(actionRateBuckets, ip, 120, 60000)) return reply.status(429).send({ message: 'Trop de requêtes.' });
+    const token = request.headers.authorization?.replace(/^Bearer /, '') ?? '';
+    const session = GameService.verifySession(token);
+    if (!session || session.gameId !== request.params.gameId) return reply.status(401).send({ message: 'Session invalide ou expirée.' });
+    try {
+      const state = await QuestionEngine.execute(session.gameId, session.playerId);
+      const io = (fastify as any).io;
+      if (io) io.to(`game:${session.gameId}`).emit('game:state', state);
+      return reply.send(state);
+    } catch (error) {
+      if (error instanceof EngineError) return reply.status(error.status).send({ message: error.message });
+      fastify.log.error(error);
+      return reply.status(500).send({ message: 'Impossible de confirmer.' });
+    }
+  });
 }

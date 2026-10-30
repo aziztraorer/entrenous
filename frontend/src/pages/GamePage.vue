@@ -29,50 +29,58 @@
           </div>
           <span class="challenge-number">Défi {{ currentTurn + 1 }} sur {{ currentTotal }}</span>
           <span class="turn-indicator" :class="isMyTurn ? 'my-turn' : 'their-turn'">
-            {{ isMyTurn ? 'À vous de répondre' : activePlayerId ? 'Tour de l\'autre joueur' : 'En attente...' }}
+            {{ waitingForOther ? 'En attente de votre validation' : isMyTurn ? 'À vous de répondre' : activePlayerId ? 'Tour de l\'autre joueur' : 'En attente...' }}
           </span>
         </div>
 
-        <h1>{{ challenge }}</h1>
-
-        <div class="response-area">
-          <textarea v-model="response" placeholder="Écris ta réponse ici..."></textarea>
-        </div>
-
-        <div class="button-group">
-          <button
-            @click="submitResponse"
-            :disabled="!isMyTurn || gameStatus === 'ended' || isSubmitting || !response.trim()"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            {{ isSubmitting ? 'Envoi...' : 'Soumettre' }}
-          </button>
-          <button class="button-secondary"
-            @click="skipQuestion"
-            :disabled="!isMyTurn || gameStatus === 'ended' || isSubmitting"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            Passer
-          </button>
-        </div>
-      </div>
-
-      <!-- Historique des questions et réponses déjà posées -->
-      <div v-if="responses.length > 0" class="responses-section">
-        <h2 class="responses-title">Vos réponses</h2>
-        <div class="responses-list">
-          <div
-            v-for="r in responses"
-            :key="r.id"
-            class="response-item"
-            :class="r.playerId === myPlayerId ? 'mine' : 'theirs'"
-          >
-            <div class="response-meta">
-              <span class="response-player">{{ r.playerName }}</span>
-              <span class="response-role">{{ r.kind === 'answer' ? 'Réponse' : 'Passé' }}</span>
-            </div>
-            <div class="response-question">{{ r.text || '(question passée)' }}</div>
+        <!-- Attente de la réponse de l'autre joueur -->
+        <div v-if="waitingForOther && otherPlayerResponse" class="waiting-other">
+          <div class="waiting-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><line x1="12" y1="2" x2="12" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line></svg>
           </div>
+          <h2>{{ otherPlayerResponse.playerName }} a répondu</h2>
+          <div class="other-response-text">{{ otherPlayerResponse.text }}</div>
+          <div class="button-group">
+            <button @click="confirmOtherResponse">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              OK — Continuer
+            </button>
+          </div>
+        </div>
+
+        <!-- Question à répondre (mon tour) -->
+        <div v-if="isMyTurn && !waitingForOther && gameStatus === 'active'">
+          <h1>{{ challenge }}</h1>
+
+          <div class="response-area">
+            <textarea v-model="response" placeholder="Écris ta réponse ici..."></textarea>
+          </div>
+
+          <div class="button-group">
+            <button
+              @click="submitResponse"
+              :disabled="!response.trim() || isSubmitting"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              {{ isSubmitting ? 'Envoi...' : 'Soumettre' }}
+            </button>
+            <button class="button-secondary"
+              @click="skipQuestion"
+              :disabled="isSubmitting"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              Passer
+            </button>
+          </div>
+        </div>
+
+        <!-- Attente que l'autre joueur réponde -->
+        <div v-if="!isMyTurn && !waitingForOther && gameStatus === 'active'" class="waiting-other">
+          <div class="waiting-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </div>
+          <h2>En attente de {{ activePlayerId ? 'l\'autre joueur' : 'un joueur' }}</h2>
+          <p style="color: var(--text-secondary); margin-top: 0.5rem;">Quand ils auront répondu, vous pourrez continuer.</p>
         </div>
       </div>
 
@@ -135,6 +143,9 @@ const isMyTurn = ref(false)
 const isSubmitting = ref(false)
 const socketConnected = ref(false)
 const gameError = ref<string | null>(null)
+const waitingForOther = ref(false)
+const otherPlayerResponse = ref<{ playerName: string; text: string; id: string } | null>(null)
+const lastConfirmedResponseId = ref<string | null>(null)
 interface ChatMsg {
   id: string
   playerId: string
@@ -232,6 +243,9 @@ onMounted(() => {
       response.value = ''
       const gameId = route.params.gameId as string
       router.push(`/end/${gameId}?totalQuestions=${s.total}`)
+    } else {
+      // Quand l'autre joueur a répondu, charger les réponses pour afficher l'attente
+      loadResponses().catch(() => {})
     }
   })
 })
@@ -271,8 +285,32 @@ async function loadResponses() {
     const gameId = route.params.gameId as string
     const data = await apiService.get<ResponseItem[]>(`/api/games/${gameId}/responses`)
     responses.value = Array.isArray(data) ? data : []
+
+    const last = responses.value.at(-1)
+    if (last && last.playerId !== myPlayerId && last.kind === 'answer' && last.id !== lastConfirmedResponseId.value) {
+      waitingForOther.value = true
+      otherPlayerResponse.value = last
+    } else {
+      waitingForOther.value = false
+      otherPlayerResponse.value = null
+    }
   } catch {
     // silencieux
+  }
+}
+
+// Confirme avoir vu la réponse de l'autre joueur : recharge l'état côté serveur
+// et le diffuse aux deux joueurs via le broadcast du backend
+async function confirmOtherResponse() {
+  lastConfirmedResponseId.value = otherPlayerResponse.value?.id ?? null
+  waitingForOther.value = false
+  otherPlayerResponse.value = null
+  try {
+    const gameId = route.params.gameId as string
+    await apiService.post(`/api/games/${gameId}/confirm`)
+    await loadCurrentQuestion()
+  } catch {
+    await loadCurrentQuestion()
   }
 }
 
@@ -311,10 +349,11 @@ const submitResponse = async () => {
       content: response.value.trim(),
     })
     response.value = ''
-  } catch (err: any) {
+    } catch (err: any) {
     gameError.value = err?.response?.data?.message || err?.message || 'Impossible de soumettre la réponse. Réessayez.'
   } finally {
     isSubmitting.value = false
+    await loadCurrentQuestion()
   }
 }
 
@@ -350,6 +389,7 @@ const skipQuestion = async () => {
     gameError.value = err?.response?.data?.message || err?.message || 'Impossible de passer cette question. Réessayez.'
   } finally {
     isSubmitting.value = false
+    await loadCurrentQuestion()
   }
 }
 </script>
@@ -540,6 +580,40 @@ button:active {
 .button-secondary:hover {
   background: var(--accent-rose);
   color: white;
+}
+
+.waiting-other {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.waiting-icon {
+  color: var(--accent-rose);
+  margin-bottom: 1rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.waiting-other h2 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  margin: 0 0 1rem 0;
+}
+
+.other-response-text {
+  background: var(--bg-light);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .responses-section {
