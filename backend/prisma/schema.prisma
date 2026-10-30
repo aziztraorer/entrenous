@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Game - A single game session between two players
+model Game {
+  id        String   @id @default(cuid())
+  code      String   @unique @db.Char(6)
+  status    String   @default("waiting") // waiting | active | ended
+  createdAt DateTime @default(now())
+  expiresAt DateTime // 24 hours from creation
+  engineState Json? // Pioche et progression privées du serveur
+
+  // Relations
+  players   Player[]
+  responses Response[]
+  chatMessages ChatMessage[]
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+// Player - A participant in a game
+model Player {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  role      Int      // 1 or 2
+  firstName String   @db.VarChar(100)
+  lastName  String   @db.VarChar(100)
+  categories String  @default("[]") // JSON array, privé pour chaque joueur
+  adultConsent Boolean @default(false) // Déclaration 18+ et consentement, pas vérification d’identité
+  joinedAt  DateTime @default(now())
+  lastActivity DateTime?
+
+  // Relations
+  responses Response[]
+  chatMessages ChatMessage[]
+
+  // Constraints: one player per role per game
+  @@unique([gameId, role])
+  @@index([gameId])
+}
+
+// Response - A player's response to a challenge
+model Response {
+  id          String   @id @default(cuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  challengeId String
+  content     String   @db.VarChar(5000)
+  createdAt   DateTime @default(now())
+
+  @@index([gameId])
+  @@index([playerId])
+  @@index([challengeId])
+}
+
+// ChatMessage - Message de chat temps réel (supprimé après 24 h)
+model ChatMessage {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  content   String   @db.VarChar(1000)
+  createdAt DateTime @default(now())
+
+  @@index([gameId, createdAt])
+  @@index([createdAt]) // utilisé par la purge des messages > 24 h
+}
+
+// Challenge - A prompt/question for players
+model Challenge {
+  id       String  @id @default(cuid())
+  type     String  // open_question | creative | quick | mirror
+  prompt   String  @db.Text
+  category String  // social | personal | fun | deep
+  active   Boolean @default(true)
+
+  @@index([active])
+  @@index([category])
+}

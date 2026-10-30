@@ -1,0 +1,243 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// GAME MODEL
+// ============================================================================
+model Game {
+  id        String   @id @default(cuid())
+  code      String   @unique @db.Char(6)
+  status    String   @default("waiting") // waiting | active | ended
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  metadata Json? @default("{}")
+  notes    String?
+
+  // Relations
+  players           Player[]
+  responses         Response[]
+  gameChallenges    GameChallenge[]
+  challengeHistory  ChallengeHistory[]
+  messages          Message[]
+  statistics        GameStatistic?
+
+  @@index([status])
+  @@index([expiresAt])
+  @@index([code])
+}
+
+// ============================================================================
+// PLAYER MODEL
+// ============================================================================
+model Player {
+  id              String   @id @default(cuid())
+  gameId          String
+  game            Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  role            Int      // 1 or 2
+  sessionToken    String?  @unique
+  joinedAt        DateTime @default(now())
+  lastActivity    DateTime?
+  disconnectedAt  DateTime?
+
+  metadata Json? @default("{}")
+
+  // Relations
+  responses              Response[]
+  categoryPreferences    PlayerCategoryPreference[]
+  messages               Message[]
+  sessionTokens          SessionToken[]
+
+  // Constraint: one player per role per game
+  @@unique([gameId, role])
+  @@index([gameId])
+  @@index([role])
+  @@index([sessionToken])
+}
+
+// ============================================================================
+// CHALLENGE CATEGORY MODEL
+// ============================================================================
+model ChallengeCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  emoji       String?  @db.VarChar(10)
+  color       String?  @db.VarChar(7)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  challenges                Challenge[]
+  playerCategoryPreferences PlayerCategoryPreference[]
+
+  @@index([active])
+}
+
+// ============================================================================
+// CHALLENGE MODEL
+// ============================================================================
+model Challenge {
+  id         String   @id @default(cuid())
+  type       String   // open_question | creative | quick | mirror | choice
+  prompt     String   @db.Text
+  categoryId String
+  category   ChallengeCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  difficulty String?  // easy | medium | hard
+  active     Boolean  @default(true)
+  usageCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  // Relations
+  responses          Response[]
+  gameChallenges     GameChallenge[]
+  challengeHistory   ChallengeHistory[]
+
+  @@index([categoryId])
+  @@index([active])
+  @@index([type])
+}
+
+// ============================================================================
+// PLAYER CATEGORY PREFERENCE MODEL
+// ============================================================================
+model PlayerCategoryPreference {
+  id         String   @id @default(cuid())
+  playerId   String
+  player     Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   ChallengeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  preference Int?     // 0-5 rating
+
+  setAt DateTime @default(now())
+
+  @@unique([playerId, categoryId])
+  @@index([playerId])
+  @@index([categoryId])
+}
+
+// ============================================================================
+// GAME CHALLENGE MODEL
+// ============================================================================
+model GameChallenge {
+  id          String   @id @default(cuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict)
+  order       Int
+  usedAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([gameId])
+  @@index([challengeId])
+  @@index([usedAt])
+}
+
+// ============================================================================
+// CHALLENGE HISTORY MODEL
+// ============================================================================
+model ChallengeHistory {
+  id          String   @id @default(cuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict)
+  order       Int
+  presentedAt DateTime @default(now())
+  completedAt DateTime?
+
+  @@index([gameId])
+  @@index([challengeId])
+  @@index([presentedAt])
+}
+
+// ============================================================================
+// RESPONSE MODEL
+// ============================================================================
+model Response {
+  id          String   @id @default(cuid())
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict)
+  content     String   @db.VarChar(5000)
+  wordCount   Int?
+  submittedAt DateTime @default(now())
+  editedAt    DateTime?
+
+  @@index([gameId])
+  @@index([playerId])
+  @@index([challengeId])
+  @@index([submittedAt])
+}
+
+// ============================================================================
+// MESSAGE MODEL (Chat)
+// ============================================================================
+model Message {
+  id        String   @id @default(cuid())
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  content   String   @db.VarChar(1000)
+  type      String   @default("text") // text | system | reaction
+  metadata  Json?    @default("{}")
+  createdAt DateTime @default(now())
+  deletedAt DateTime?
+
+  @@index([gameId])
+  @@index([playerId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// SESSION TOKEN MODEL
+// ============================================================================
+model SessionToken {
+  id        String   @id @default(cuid())
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  token     String   @unique @db.VarChar(500)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  @@index([playerId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+// ============================================================================
+// GAME STATISTIC MODEL
+// ============================================================================
+model GameStatistic {
+  id                  String   @id @default(cuid())
+  gameId              String   @unique
+  game                Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  totalChallenges     Int      @default(0)
+  completedChallenges Int      @default(0)
+  totalMessages       Int      @default(0)
+  averageResponseLength Float?
+  player1Responses    Int      @default(0)
+  player2Responses    Int      @default(0)
+  durationSeconds     Int?
+  endedAt             DateTime?
+  createdAt           DateTime @default(now())
+
+  @@index([gameId])
+}

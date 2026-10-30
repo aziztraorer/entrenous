@@ -1,0 +1,96 @@
+# Dependencies
+node_modules/
+*.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Production
+dist/
+build/
+out/
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.sln
+*.swp
+*.swc
+.swc/
+*.sublime-project
+*.sublime-workspace
+.fleet
+.jj/
+
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Prisma
+prisma/.env
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn integrity file
+yarn-integrity
+
+# dotenv environment variables file
+.env.*.local
+
+# Mac files
+.DS_Store
+
+# Tmp files
+tmp/
+temp/
+*.tmp
+
+# Build outputs
+*.js.map
+*.d.ts
+
+# Database
+*.sqlite
+*.sqlite3
+
+# Locks (optional, usually excluded)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Docker
+.docker
+docker-compose.override.yml
