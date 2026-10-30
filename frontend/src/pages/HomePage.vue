@@ -110,9 +110,9 @@
 
     <footer>
       <div class="footer-links">
-        <a href="#" @click.prevent="globalThis.alert('Règles du jeu — Section à venir')">Règles</a>
-        <a href="#" @click.prevent="globalThis.alert('Politique de confidentialité — Section à venir')">Confidentialité</a>
-        <a href="#" @click.prevent="globalThis.alert('Contacter l\'équipe — entre.nous.game@example.com')">Contact</a>
+        <router-link to="/regles">Règles</router-link>
+        <router-link to="/confidentialite">Confidentialité</router-link>
+        <router-link to="/contact">Contact</router-link>
       </div>
 
       <p class="footer-credit">Entre Nous © 2026 — Créer des connexions authentiques, une conversation à la fois.</p>

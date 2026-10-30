@@ -8,6 +8,9 @@ const JoinGamePage = () => import('@/pages/JoinGamePage.vue')
 const WaitPage = () => import('@/pages/WaitPage.vue')
 const GamePage = () => import('@/pages/GamePage.vue')
 const EndPage = () => import('@/pages/EndPage.vue')
+const RulesPage = () => import('@/pages/RulesPage.vue')
+const PrivacyPage = () => import('@/pages/PrivacyPage.vue')
+const ContactPage = () => import('@/pages/ContactPage.vue')
 const NotFoundPage = () => import('@/pages/NotFoundPage.vue')
 
 const routes: RouteRecordRaw[] = [
@@ -58,6 +61,30 @@ const routes: RouteRecordRaw[] = [
     component: EndPage,
     meta: {
       title: 'Partie Terminée - Entre Nous'
+    }
+  },
+  {
+    path: '/regles',
+    name: 'Rules',
+    component: RulesPage,
+    meta: {
+      title: 'Règles du jeu - Entre Nous'
+    }
+  },
+  {
+    path: '/confidentialite',
+    name: 'Privacy',
+    component: PrivacyPage,
+    meta: {
+      title: 'Politique de confidentialité - Entre Nous'
+    }
+  },
+  {
+    path: '/contact',
+    name: 'Contact',
+    component: ContactPage,
+    meta: {
+      title: 'Contact - Entre Nous'
     }
   },
   {

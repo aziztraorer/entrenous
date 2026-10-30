@@ -57,6 +57,25 @@
         </div>
       </div>
 
+      <!-- Historique des questions et réponses déjà posées -->
+      <div v-if="responses.length > 0" class="responses-section">
+        <h2 class="responses-title">Vos réponses</h2>
+        <div class="responses-list">
+          <div
+            v-for="r in responses"
+            :key="r.id"
+            class="response-item"
+            :class="r.playerId === myPlayerId ? 'mine' : 'theirs'"
+          >
+            <div class="response-meta">
+              <span class="response-player">{{ r.playerName }}</span>
+              <span class="response-role">{{ r.kind === 'answer' ? 'Réponse' : 'Passé' }}</span>
+            </div>
+            <div class="response-question">{{ r.text || '(question passée)' }}</div>
+          </div>
+        </div>
+      </div>
+
       <div class="chat-section">
         <h2 class="chat-title">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
@@ -94,11 +113,12 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { apiService } from '@/services/api'
 import { socketService } from '@/services/socketService'
 
 const route = useRoute()
+const router = useRouter()
 
 const response = ref('')
 const currentTime = ref('2:45')
@@ -125,6 +145,17 @@ interface ChatMsg {
 const messages = ref<ChatMsg[]>([])
 const chatDraft = ref('')
 const chatError = ref<string | null>(null)
+interface ResponseItem {
+  id: string
+  questionId: string
+  playerId: string
+  playerName: string
+  playerRole: number
+  kind: string
+  text: string
+  createdAt: string
+}
+const responses = ref<ResponseItem[]>([])
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -199,6 +230,8 @@ onMounted(() => {
     isMyTurn.value = s.activePlayerId === myPlayerId
     if (s.status === 'ended') {
       response.value = ''
+      const gameId = route.params.gameId as string
+      router.push(`/end/${gameId}?totalQuestions=${s.total}`)
     }
   })
 })
@@ -223,8 +256,23 @@ async function loadCurrentQuestion() {
     activePlayerId.value = state.activePlayerId
     gameStatus.value = state.status
     isMyTurn.value = state.activePlayerId === myPlayerId
+    if (state.status === 'ended') {
+      router.push(`/end/${gameId}?totalQuestions=${state.total}`)
+    }
+    await loadResponses()
   } catch {
     // En cas d'erreur, on garde la valeur par défaut — silencieux pour ne pas casser la page
+  }
+}
+
+// Récupère l'historique des questions et réponses (passées uniquement)
+async function loadResponses() {
+  try {
+    const gameId = route.params.gameId as string
+    const data = await apiService.get<ResponseItem[]>(`/api/games/${gameId}/responses`)
+    responses.value = Array.isArray(data) ? data : []
+  } catch {
+    // silencieux
   }
 }
 
@@ -492,6 +540,74 @@ button:active {
 .button-secondary:hover {
   background: var(--accent-rose);
   color: white;
+}
+
+.responses-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 16px var(--shadow-soft);
+}
+
+.responses-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 1.2rem;
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+}
+
+.responses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.response-item {
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent-rose);
+}
+
+.response-item.mine {
+  background: rgba(192, 122, 122, 0.1);
+  border-left-color: var(--accent-burgundy);
+  align-self: flex-end;
+  max-width: 80%;
+}
+
+.response-item.theirs {
+  background: var(--bg-light);
+  align-self: flex-start;
+  max-width: 80%;
+}
+
+.response-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.response-player {
+  font-weight: 600;
+  color: var(--accent-rose);
+}
+
+.response-item.mine .response-player {
+  color: var(--accent-burgundy);
+}
+
+.response-role {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.response-question {
+  color: var(--text-primary);
+  line-height: 1.5;
 }
 
 .chat-section {

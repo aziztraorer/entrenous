@@ -8,6 +8,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { GameService } from '@/services/GameService';
+import { prisma } from '@/database/prisma';
 
 import { normalizeCategories } from '@/data/questions';
 import { EngineError, QuestionEngine } from '@/services/QuestionEngine';
@@ -195,6 +196,37 @@ export async function gameRoutes(fastify: FastifyInstance) {
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ message: 'Erreur interne du serveur.' });
+    }
+  });
+
+  /**
+   * GET /api/games/:gameId/responses — Historique des questions et réponses (affichage uniquement, pas les questions futures)
+   */
+  fastify.get<{ Params: { gameId: string } }>('/api/games/:gameId/responses', async (request, reply) => {
+    const ip = request.ip || 'unknown';
+    if (!checkRate(actionRateBuckets, ip, 120, 60000)) return reply.status(429).send({ message: 'Trop de requêtes.' });
+    const token = request.headers.authorization?.replace(/^Bearer /, '') ?? '';
+    const session = GameService.verifySession(token);
+    if (!session || session.gameId !== request.params.gameId) return reply.status(401).send({ message: 'Session invalide ou expirée.' });
+    try {
+      const rows = await prisma.response.findMany({
+        where: { gameId: request.params.gameId },
+        orderBy: { createdAt: 'asc' },
+        include: { player: { select: { firstName: true, role: true } } },
+      });
+      return reply.send(rows.map((r: any) => ({
+        id: r.id,
+        questionId: r.challengeId,
+        playerId: r.playerId,
+        playerName: r.player.firstName,
+        playerRole: r.player.role,
+        kind: (JSON.parse(r.content) as { kind: string; text: string }).kind,
+        text: (JSON.parse(r.content) as { kind: string; text: string }).text,
+        createdAt: r.createdAt.toISOString(),
+      })));
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ message: 'Impossible de récupérer l\'historique.' });
     }
   });
 }
