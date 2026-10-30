@@ -74,6 +74,9 @@ export async function gameRoutes(fastify: FastifyInstance) {
             return reply.status(400).send({ message: 'Action invalide.' });
           }
           const state = await QuestionEngine.execute(session.gameId, session.playerId, method === 'POST' ? body : undefined);
+          // Diffusion temps réel aux deux joueurs (même si l'appel est HTTP)
+          const io = (fastify as any).io;
+          if (io) io.to(`game:${session.gameId}`).emit('game:state', state);
           return reply.send(state);
         } catch (error) {
           if (error instanceof EngineError) return reply.status(error.status).send({ message: error.message });

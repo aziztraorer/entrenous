@@ -42,14 +42,14 @@
         <div class="button-group">
           <button
             @click="submitResponse"
-            :disabled="!isMyTurn.value || gameStatus.value === 'ended' || isSubmitting.value || !response.value.trim()"
+            :disabled="!isMyTurn || gameStatus === 'ended' || isSubmitting || !response.trim()"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            {{ isSubmitting.value ? 'Envoi...' : 'Soumettre' }}
+            {{ isSubmitting ? 'Envoi...' : 'Soumettre' }}
           </button>
           <button class="button-secondary"
             @click="skipQuestion"
-            :disabled="!isMyTurn.value || gameStatus.value === 'ended' || isSubmitting.value"
+            :disabled="!isMyTurn || gameStatus === 'ended' || isSubmitting"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
             Passer
@@ -87,12 +87,13 @@
         </div>
         <div v-if="chatError" class="chat-error">{{ chatError }}</div>
       </div>
+      <div v-if="gameError" class="chat-error" style="margin-top: 0.5rem;">{{ gameError }}</div>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiService } from '@/services/api'
 import { socketService } from '@/services/socketService'
@@ -112,6 +113,8 @@ const activePlayerId = ref<string | null>(null)
 const gameStatus = ref<'active' | 'ended'>('active')
 const isMyTurn = ref(false)
 const isSubmitting = ref(false)
+const socketConnected = ref(false)
+const gameError = ref<string | null>(null)
 interface ChatMsg {
   id: string
   playerId: string
@@ -146,6 +149,20 @@ onMounted(() => {
   // Chat temps réel (PROMPT 9) : reconnexion gérée par socketService
   const token = localStorage.getItem('sessionToken') ?? ''
   socketService.connect(token).catch(() => {})
+
+  // Suivi de l'état de connexion socket
+  socketService.on('connect', () => {
+    socketConnected.value = true
+    gameError.value = null
+  })
+  socketService.on('disconnect', () => {
+    socketConnected.value = false
+  })
+  socketService.on('connect_error', (err) => {
+    socketConnected.value = false
+    gameError.value = err instanceof Error ? err.message : 'Erreur de connexion socket.'
+  })
+
   socketService.on('chat:history', (history) => {
     messages.value = history as ChatMsg[]
   })
@@ -155,6 +172,12 @@ onMounted(() => {
   })
   socketService.on('chat:error', (e) => {
     chatError.value = (e as { message: string }).message
+  })
+  // Erreurs d'action de jeu (403, 409, 410, 429...)
+  socketService.on('game:error', (e) => {
+    const err = e as { status?: number; message?: string }
+    gameError.value = err?.message || 'Erreur lors de l\'action de jeu.'
+    setTimeout(() => { gameError.value = null }, 5000)
   })
   // Mise à jour temps réel de la question courante (diffusée aux deux joueurs)
   socketService.on('game:state', (state) => {
@@ -208,30 +231,75 @@ async function loadCurrentQuestion() {
 onMounted(loadCurrentQuestion)
 
 const submitResponse = async () => {
+  gameError.value = null
   if (!response.value.trim()) {
     alert('Écris quelque chose avant de soumettre!')
     return
   }
-  if (!currentQuestionId.value || !isMyTurn.value || isSubmitting.value) return
+  if (!currentQuestionId.value) {
+    await loadCurrentQuestion()
+    if (!currentQuestionId.value) {
+      gameError.value = 'Impossible de récupérer la question actuelle.'
+      return
+    }
+  }
+  if (!isMyTurn.value) {
+    gameError.value = "Ce n'est pas votre tour."
+    return
+  }
+  if (isSubmitting.value) return
   isSubmitting.value = true
   try {
-    socketService.sendGameAction(currentQuestionId.value, 'answer', response.value.trim())
+    const gameId = route.params.gameId as string
+    await apiService.post<{
+      status: 'active' | 'ended';
+      question: { id: string; prompt: string } | null;
+      turn: number;
+      total: number;
+      activePlayerId: string | null;
+    }>(`/api/games/${gameId}/action`, {
+      kind: 'answer',
+      questionId: currentQuestionId.value,
+      content: response.value.trim(),
+    })
     response.value = ''
-  } catch {
-    alert('Impossible de soumettre la réponse. Réessayez.')
+  } catch (err: any) {
+    gameError.value = err?.response?.data?.message || err?.message || 'Impossible de soumettre la réponse. Réessayez.'
   } finally {
     isSubmitting.value = false
   }
 }
 
 const skipQuestion = async () => {
-  if (!currentQuestionId.value || !isMyTurn.value || isSubmitting.value) return
+  gameError.value = null
+  if (!currentQuestionId.value) {
+    await loadCurrentQuestion()
+    if (!currentQuestionId.value) {
+      gameError.value = 'Impossible de récupérer la question actuelle.'
+      return
+    }
+  }
+  if (!isMyTurn.value) {
+    gameError.value = "Ce n'est pas votre tour."
+    return
+  }
+  if (isSubmitting.value) return
   isSubmitting.value = true
   try {
-    socketService.sendGameAction(currentQuestionId.value, 'skip')
+    const gameId = route.params.gameId as string
+    await apiService.post<{
+      status: 'active' | 'ended';
+      question: { id: string; prompt: string } | null;
+      turn: number;
+      total: number;
+      activePlayerId: string | null;
+    }>(`/api/games/${gameId}/action`, {
+      kind: 'skip',
+      questionId: currentQuestionId.value,
+    })
     response.value = ''
-  } catch {
-    alert('Impossible de passer cette question. Réessayez.')
+  } catch (err: any) {
+    gameError.value = err?.response?.data?.message || err?.message || 'Impossible de passer cette question. Réessayez.'
   } finally {
     isSubmitting.value = false
   }

@@ -66,19 +66,19 @@ class SocketService {
 
         this.socket.on('connect', () => {
           console.log('Socket connected')
-          this.emit('connect')
+          this.emitLocal('connect')
           resolve()
         })
 
         this.socket.on('connect_error', (error) => {
           console.error('Socket connection error:', error)
-          this.emit('connect_error', error)
+          this.emitLocal('connect_error', error)
           reject(error)
         })
 
         this.socket.on('disconnect', () => {
           console.log('Socket disconnected')
-          this.emit('disconnect')
+          this.emitLocal('disconnect')
         })
 
         // Setup event forwarding
@@ -125,11 +125,27 @@ class SocketService {
     }
   }
 
+  /** Événements réservés de Socket.IO côté client — jamais envoyés via socket.emit() */
+  private readonly reservedEvents = new Set([
+    'connect', 'disconnect', 'connect_error', 'connect_timeout',
+    'reconnect', 'reconnect_attempt', 'reconnecting', 'reconnect_error',
+    'reconnect_failed', 'ping', 'pong', 'error',
+  ])
+
   emit(event: keyof SocketEvents, ...args: unknown[]): void {
-    if (this.socket) {
+    // Ne jamais envoyer d'événements réservés via le socket (erreur Socket.IO)
+    if (!this.reservedEvents.has(event as string) && this.socket) {
       this.socket.emit(event, ...args)
     }
-    // Also trigger local listeners
+    // Déclencher toujours les listeners locaux
+    const listeners = this.listeners.get(event)
+    if (listeners) {
+      listeners.forEach((listener) => listener(...args))
+    }
+  }
+
+  /** Émet uniquement auprès des listeners locaux (pas de socket) */
+  emitLocal(event: keyof SocketEvents, ...args: unknown[]): void {
     const listeners = this.listeners.get(event)
     if (listeners) {
       listeners.forEach((listener) => listener(...args))
