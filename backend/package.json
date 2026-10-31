@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/main.js",
+    "start": "tsx src/main.ts",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
