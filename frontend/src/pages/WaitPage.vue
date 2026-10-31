@@ -75,6 +75,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { io, type Socket } from 'socket.io-client'
+import { SOCKET_URL, apiUrl } from '@/config/env'
 
 const router = useRouter()
 
@@ -83,7 +84,6 @@ const gameCode = ref(localStorage.getItem('gameCode') || '------')
 const isFull = ref(false)
 const otherPlayerName = ref('')
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
 const inviteLink = ref(`${window.location.origin}/join?code=${gameCode.value}`)
 
 let socket: Socket | null = null
@@ -110,12 +110,10 @@ const applyLobby = (lobby: Lobby) => {
   }
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-
 const pollLobby = async () => {
   if (!gameId) return
   try {
-    const res = await fetch(`${API_URL}/api/games/${gameId}/lobby`)
+    const res = await fetch(apiUrl(`/api/games/${gameId}/lobby`))
     if (!res.ok) return
     applyLobby(await res.json())
   } catch {

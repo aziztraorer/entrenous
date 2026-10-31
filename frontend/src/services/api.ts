@@ -4,8 +4,7 @@
  */
 
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+import { API_URL } from '@/config/env'
 
 class ApiService {
   private client: AxiosInstance

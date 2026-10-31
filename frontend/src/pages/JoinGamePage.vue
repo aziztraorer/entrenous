@@ -100,6 +100,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { apiUrl } from '@/config/env'
 
 const router = useRouter()
 
@@ -149,9 +150,7 @@ const joinGame = async () => {
 
   try {
     // Appel API au backend pour rejoindre la partie
-    const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/games/join`
-
-    const response = await fetch(apiUrl, {
+    const response = await fetch(apiUrl('/api/games/join'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

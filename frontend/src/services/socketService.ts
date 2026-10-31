@@ -4,9 +4,8 @@
  */
 
 import { io, type Socket } from 'socket.io-client'
+import { SOCKET_URL } from '@/config/env'
 import type { Challenge, Response } from '@/types'
-
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
 
 export interface SocketEvents {
   // Realtime game state (PROMPT 9) : même état pour les deux joueurs
