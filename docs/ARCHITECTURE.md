@@ -1,345 +1,104 @@
-# Architecture - Entre Nous
+# Architecture — Entre Nous
 
-## 1. Vue d'ensemble architecturale
+## Vue d'ensemble
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Client (Browser)                      │
-│                    Vue 3 + TypeScript + PWA                  │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Components │ Pages │ Stores (Pinia) │ Services        │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                           ↓                                   │
-│           HTTP (REST) + WebSocket (Socket.IO)                │
-└─────────────────────────────────────────────────────────────┘
-                           ↓
-┌─────────────────────────────────────────────────────────────┐
-│                   Server (Backend)                           │
-│              Fastify + Node.js + TypeScript                  │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Routes │ Socket Handlers │ Services │ Middleware     │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                           ↓                                   │
-│                 Prisma ORM + PostgreSQL                      │
-└─────────────────────────────────────────────────────────────┘
-```
+Entre Nous est une application monorepo divisée en deux parties indépendantes :
 
-## 2. Frontend Architecture
+- **Backend** : API REST Fastify + serveur Socket.IO, base de données PostgreSQL via Prisma ORM.
+- **Frontend** : Application monopage Vue 3 + Vite, PWA, gestion d'état Pinia, routage Vue Router.
 
-### 2.1 Structure des dossiers
+Les deux parties communiquent via HTTP (API REST) et WebSocket (Socket.IO pour le temps réel).
 
-```
-frontend/src/
-├── pages/                  # Pages (routed)
-│   ├── HomePage.vue       # Page d'accueil
-│   ├── CreateGamePage.vue # Création de partie
-│   ├── WaitPage.vue       # Attente du second joueur
-│   ├── GamePage.vue       # Interface de jeu
-│   └── EndGamePage.vue    # Fin de partie
-│
-├── components/             # Composants réutilisables
-│   ├── GameChallenge.vue  # Affichage du défi
-│   ├── ResponseForm.vue   # Formulaire de réponse
-│   ├── ResponseDisplay.vue # Affichage côte à côte
-│   ├── GameHeader.vue     # En-tête de la partie
-│   ├── PlayerIndicator.vue # Indicateur du joueur actif
-│   └── ErrorBoundary.vue  # Gestion des erreurs
-│
-├── stores/                 # Pinia stores
-│   ├── gameStore.ts       # État du jeu
-│   ├── uiStore.ts         # État UI (modal, notifications)
-│   └── playerStore.ts     # Données du joueur local
-│
-├── services/               # Services (API, Socket.IO)
-│   ├── api.ts             # Client Axios
-│   ├── socketService.ts   # Gestion Socket.IO
-│   ├── gameService.ts     # Logique métier du jeu
-│   └── storageService.ts  # LocalStorage
-│
-├── types/                  # Types TypeScript
-│   ├── game.ts            # Types Game, Challenge, Response
-│   ├── player.ts          # Types Player
-│   └── events.ts          # Types Socket.IO events
-│
-├── utils/                  # Utilitaires
-│   ├── validators.ts      # Validations
-│   ├── formatters.ts      # Formatage (dates, textes)
-│   └── constants.ts       # Constantes (timeouts, limites)
-│
-├── router/
-│   └── index.ts           # Configuration Vue Router
-│
-├── styles/
-│   └── globals.css        # Styles globaux + Tailwind
-│
-├── App.vue                # Composant root
-└── main.ts                # Point d'entrée
-```
+## Stack technique
 
-### 2.2 Flux de données (Pinia)
+### Backend
 
-```
-Component
-   ↓
-Dispatch Action (gameStore)
-   ↓
-Mutation (Update State)
-   ↓
-Computed (Selector)
-   ↓
-Component (Re-render)
-```
+| Composant | Technologie | Rôle |
+|-----------|-------------|------|
+| Runtime | Node.js 18/20 | Exécution du serveur |
+| Framework web | Fastify | API REST + middleware |
+| Temps réel | Socket.IO | WebSocket pour le chat et l'état du jeu |
+| Base de données | PostgreSQL 14/15 | Stockage des parties, joueurs, réponses, messages |
+| ORM | Prisma | Accès typé à la base de données |
+| Validation | Zod | Schéma d'entrée côté serveur |
+| JWT | jsonwebtoken | Jetons de session temporaires |
+| Logs | Pino | Journalisation structurée |
+| Sécurité | @fastify/helmet, @fastify/cors, @fastify/rate-limit | En-têtes de sécurité, CORS, rate limiting |
+| TypeScript | 5.3 | Typage statique |
+| Tests | Vitest | Tests unitaires et d'intégration |
 
-### 2.3 Communication Socket.IO
+### Frontend
 
-**Événements Client → Server** :
-- `game:create` - Créer une partie
-- `game:join` - Rejoindre une partie
-- `response:submit` - Soumettre une réponse
-- `challenge:ready` - Prêt pour le défi suivant
-- `game:leave` - Quitter la partie
+| Composant | Technologie | Rôle |
+|-----------|-------------|------|
+| Framework | Vue 3 | Interface utilisateur |
+| Build tool | Vite | Compilation, serveur dev, build production |
+| Routage | Vue Router 4 | Navigation entre pages |
+| État global | Pinia 2 | Store de partie et d'interface |
+| HTTP client | Axios | Appels API REST |
+| WebSocket client | socket.io-client | Connexion temps réel |
+| Styling | Tailwind CSS | CSS utilitaire |
+| PWA | vite-plugin-pwa | Service worker, manifeste, précache |
+| TypeScript | 5.3 | Typage statique |
+| Tests | Vitest + Vue Test Utils | Tests unitaires |
 
-**Événements Server → Client** :
-- `game:created` - Partie créée (envoyer le code)
-- `game:playerJoined` - Joueur a rejoint
-- `game:started` - Partie commencée
-- `challenge:new` - Nouveau défi envoyé
-- `response:received` - Réponse reçue (de l'autre joueur)
-- `game:ended` - Partie terminée
-- `game:error` - Erreur dans la partie
+## Schéma de base de données (Prisma)
 
-## 3. Backend Architecture
+Modèles principaux :
 
-### 3.1 Structure des dossiers
+- **Game** : id, code, statut, dates de création/expiration, état du moteur de questions (JSON)
+- **Player** : id, gameId, role (1 ou 2), prénom, nom, catégories choisies (JSON), dernière activité
+- **Response** : id, gameId, playerId, challengeId, contenu (JSON avec kind et text), date de création
+- **ChatMessage** : id, gameId, playerId, contenu, date de création
+- **Challenge** : banque de questions par catégorie
 
-```
-backend/src/
-├── routes/                 # Routes HTTP (Fastify)
-│   ├── game.routes.ts     # POST /games, GET /games/:id
-│   ├── health.routes.ts   # GET /health (liveness check)
-│   └── index.ts           # Enregistrement des routes
-│
-├── handlers/               # Handlers Socket.IO
-│   ├── gameHandlers.ts    # Création, rejoindre, quitter
-│   ├── responseHandlers.ts # Soumission de réponses
-│   ├── challengeHandlers.ts # Défis suivants
-│   └── index.ts           # Enregistrement des handlers
-│
-├── services/               # Logique métier
-│   ├── GameService.ts     # Gestion des parties
-│   ├── PlayerService.ts   # Gestion des joueurs
-│   ├── ChallengeService.ts # Sélection des défis
-│   ├── ResponseService.ts # Validation des réponses
-│   └── CodeGenerator.ts   # Génération codes 6 chiffres
-│
-├── middleware/             # Middlewares Fastify
-│   ├── auth.middleware.ts  # Vérification JWT/session
-│   ├── validation.middleware.ts # Validation requêtes
-│   ├── cors.middleware.ts  # CORS config
-│   └── error.middleware.ts # Gestion erreurs
-│
-├── database/
-│   ├── prisma.ts          # Instance Prisma
-│   └── seed.ts            # Données initiales (challenges)
-│
-├── types/                  # Types TypeScript
-│   ├── game.ts
-│   ├── player.ts
-│   ├── challenge.ts
-│   └── response.ts
-│
-├── utils/                  # Utilitaires
-│   ├── validators.ts
-│   ├── logger.ts
-│   └── constants.ts
-│
-├── config/
-│   ├── env.ts             # Variables d'environnement
-│   └── cors.ts            # Configuration CORS
-│
-└── main.ts                # Point d'entrée (Fastify + Socket.IO)
-```
+Contraintes importantes :
 
-### 3.2 Pattern : Service Layer
+- `Game` → `Player`, `Response`, `ChatMessage` : suppression en cascade (`onDelete: Cascade`)
+- Un code de partie à 6 caractères (alphanumérique, majuscules)
+- Maximum 2 joueurs par partie
 
-Chaque Service gère une entité métier :
+## Flux de données
 
-```typescript
-// GameService
-class GameService {
-  async createGame(): Promise<Game>
-  async getGame(gameId: string): Promise<Game>
-  async joinGame(gameId: string, playerId: string): Promise<Game>
-  async endGame(gameId: string): Promise<void>
-  async getExpiredGames(): Promise<Game[]>
-  async deleteGame(gameId: string): Promise<void>
-}
-```
+### Création et jonction de partie
 
-### 3.3 Architecture Socket.IO
+1. Joueur 1 appelle `POST /api/games` → reçoit `gameCode`, `sessionToken`, `playerId`, `playerRole`
+2. Joueur 1 partage le `gameCode` avec le joueur 2
+3. Joueur 2 appelle `POST /api/games/join` avec le code → reçoit ses propres `sessionToken`, `playerId`, `playerRole`
+4. Les deux joueurs se connectent au WebSocket et rejoignent la salle `game:<gameId>`
 
-```
-Server (Fastify)
-    ↓
-Socket.IO Instance
-    ↓
-Rooms (one per game)
-    ↓
-Event Handlers (registered in /handlers)
-    ↓
-Services (business logic)
-    ↓
-Prisma (database)
-```
+### Tour de jeu (alternance)
 
-## 4. Database Schema (Prisma)
+1. Le joueur dont c'est le tour voit la question et répond ou passe
+2. L'appel `POST /api/games/:gameId/action` met à jour l'état côté serveur
+3. Le serveur diffuse `game:state` aux deux joueurs via Socket.IO
+4. Le joueur qui n'a pas répondu voit la réponse de l'autre + bouton "OK — Continuer"
+5. Ce joueur clique OK → `POST /api/games/:gameId/confirm` → le serveur recharge et diffuse le nouvel état
+6. Si c'est maintenant son tour, il voit sa question ; sinon il attend à nouveau
 
-```prisma
-model Game {
-  id        String    @id @default(cuid())
-  code      String    @unique @db.Char(6)
-  status    String    // 'waiting' | 'active' | 'ended'
-  createdAt DateTime  @default(now())
-  expiresAt DateTime  // 24 hours from creation
-  players   Player[]
-  responses Response[]
-}
+### Chat temps réel
 
-model Player {
-  id        String   @id @default(cuid())
-  gameId    String
-  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  role      Int      // 1 ou 2
-  joinedAt  DateTime @default(now())
-  responses Response[]
-  @@unique([gameId, role])
-}
+1. Un joueur envoie `chat:send` avec le contenu du message
+2. Le serveur valide, stocke en base, et diffuse `chat:message` aux deux joueurs
+3. L'historique est récupéré via `chat:history` à la connexion
 
-model Response {
-  id          String    @id @default(cuid())
-  gameId      String
-  game        Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  playerId    String
-  player      Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
-  challengeId String
-  content     String    @db.VarChar(5000)
-  createdAt   DateTime  @default(now())
-}
+## Sécurité
 
-model Challenge {
-  id       String @id @default(cuid())
-  type     String // 'open_question' | 'creative' | 'quick' | 'mirror'
-  prompt   String
-  category String // 'social' | 'personal' | 'fun' | 'deep'
-  active   Boolean @default(true)
-}
-```
+- **CORS** : origine restrictive configurable (`CORS_ORIGIN`), pas de joker en production.
+- **Rate limiting** : par IP sur les routes API, par socket sur les événements WebSocket.
+- **JWT** : secret requis (≥ 32 caractères), expiration courte (24h recommandé).
+- **Validation** : toutes les entrées validées avec Zod.
+- **Autorisation** : chaque action vérifie que le joueur appartient à la partie et que c'est son tour.
+- **HTTPS/WSS** : requis en production via proxy inversé (Nginx, Caddy, etc.).
+- **Pas de données sensibles** : aucun email, mot de passe, ou identifiant persistant.
 
-## 5. Communication Frontend ↔ Backend
+## PWA
 
-### 5.1 REST Endpoints
+- Manifeste d'application web (`manifest.webmanifest`)
+- Service worker pour la mise en cache hors ligne
+- Précache des ressources statiques
+- Aucun endpoint API mis en cache par le service worker
 
-```
-POST   /games                 → Créer une partie
-GET    /games/:gameId         → Récupérer info partie
-POST   /games/:gameId/join    → Rejoindre une partie
-GET    /health                → Vérifier santé serveur
-```
+## Déploiement
 
-### 5.2 Socket.IO Events
-
-Voir section 2.3 Frontend
-
-## 6. Sécurité
-
-### 6.1 Authentication Flow
-
-```
-1. Client se connecte via Socket.IO (pas d'auth au démarrage)
-2. Après création/rejoindre, Server envoie JWT (token)
-3. Client stocke en sessionStorage (pas localStorage = pas de leak)
-4. Client envoie token dans les subsequent emissions
-5. Middleware vérifie token avant de traiter l'événement
-```
-
-### 6.2 Validation
-
-**Côté Client** :
-- Max 5000 caractères
-- Non-vide
-- Pas de HTML/JS
-
-**Côté Serveur** (toujours) :
-- Valider longueur
-- Sanitizer HTML
-- Vérifier game ID
-- Vérifier player ID
-- Rate limiting par player
-
-## 7. Testing Strategy
-
-### Frontend (Vitest + Vue Test Utils)
-
-```typescript
-// GamePage.spec.ts
-import { mount } from '@vue/test-utils'
-import GamePage from '@/pages/GamePage.vue'
-
-it('displays challenge', async () => {
-  const wrapper = mount(GamePage)
-  expect(wrapper.find('.challenge').exists()).toBe(true)
-})
-```
-
-### Backend (Vitest + Supertest)
-
-```typescript
-// game.routes.spec.ts
-import request from 'supertest'
-import { app } from '@/main'
-
-it('POST /games creates a game', async () => {
-  const res = await request(app)
-    .post('/games')
-    .expect(201)
-  expect(res.body).toHaveProperty('code')
-})
-```
-
-## 8. Performance Targets
-
-- **Temps de chargement** : < 3 secondes (Mobile 4G)
-- **Time to Interactive** : < 5 secondes
-- **Bundle size** : < 500 KB (gzippé)
-- **Latence Socket.IO** : < 200 ms
-
-## 9. Deployment Architecture
-
-```
-┌──────────────────┐
-│   GitHub Repo    │
-│  (Code + Docs)   │
-└────────┬─────────┘
-         │
-         ↓
-┌──────────────────────────────────────────┐
-│  CI/CD Pipeline (GitHub Actions)         │
-│  - Run tests                             │
-│  - Build frontend                        │
-│  - Build backend                         │
-│  - Push to registry                      │
-└────────┬─────────────────────────────────┘
-         │
-         ↓
-┌──────────────────────────────────────────┐
-│  Docker Containers                       │
-│  - Frontend (nginx)                      │
-│  - Backend (node)                        │
-│  - PostgreSQL                            │
-└────────┬─────────────────────────────────┘
-         │
-         ↓
-┌──────────────────────────────────────────┐
-│  Hosting (Heroku / AWS / VPS)            │
-└──────────────────────────────────────────┘
-```
+Voir `docs/DEPLOYMENT.md` pour la procédure complète.

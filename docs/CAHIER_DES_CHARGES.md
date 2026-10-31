@@ -1,195 +1,132 @@
-# Cahier des Charges - Entre Nous
+# Cahier des charges — Entre Nous
 
-## 1. Vue d'ensemble
+## 1. Présentation du projet
 
-**Entre Nous** est un jeu de conversation en temps réel permettant à deux joueurs de se rencontrer anonymement via un lien d'invitation unique et de participer à des défis conversationnels.
+Entre Nous est un jeu de conversation anonyme en temps réel entre deux personnes, conçu pour favoriser des échanges authentiques et profonds. Aucune inscription, aucun email, aucun mot de passe n'est requis. Une partie se joue à deux, avec un code d'invitation à 6 caractères partagé par le premier joueur.
 
-### Objectif
-Créer une plateforme légère, intuitive et engageante pour des conversations guidées entre deux personnes, sans création de compte ni données persistantes.
+## 2. Objectifs
 
-## 2. Fonctionnalités principales
+- Permettre à deux personnes de converser de manière anonyme et éphémère
+- Proposer des questions par catégorie, choisies par chaque joueur
+- Garantir l'absence de répétition des questions pendant une partie
+- Offrir un chat temps réel avec historique éphémère
+- Assurer la suppression automatique des données après un délai configurable
 
-### 2.1 Démarrage d'une partie
-- **Créer une partie** : Un joueur clique sur "Commencer un jeu" → système génère un lien d'invitation unique
-- **Rejoindre une partie** : Un second joueur accède au lien → rejoint automatiquement la partie
-- **Attente** : Le premier joueur voit un écran d'attente jusqu'à l'arrivée du second joueur
-- **Démarrage automatique** : Une fois les deux joueurs connectés, la partie commence
+## 3. Fonctionnalités
 
-### 2.2 Gameplay
-- **Défis conversationnels** : Le système propose des questions/défis alternatifs aux deux joueurs
-- **Saisie de réponses** : Chaque joueur rentre sa réponse dans un champ texte
-- **Affichage des réponses** : Après validation, les deux réponses sont affichées côte à côte
-- **Notation (optionnel)** : Les joueurs peuvent évaluer les réponses (emoji, likes, etc.)
-- **Progression** : Bouton "Défi suivant" pour passer au défis suivant
+### 3.1 Gestion des parties
 
-### 2.3 Communication en temps réel
-- **Socket.IO** pour la synchronisation bidirectionnelle
-- **Événements temps réel** : Les actions d'un joueur sont visibles instantanément chez l'autre
-- **Typing indicator (optionnel)** : Afficher quand l'autre joueur tape
-- **Notifications** : Alerte quand un joueur répond, vient de rejoindre, etc.
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| F1 | Création d'une partie par le premier joueur | Terminé | Oui |
+| F2 | Génération d'un code d'invitation à 6 caractères | Terminé | Oui |
+| F3 | Rejoindre une partie avec le code d'invitation | Terminé | Oui |
+| F4 | Rejet d'un troisième joueur (partie complète) | Terminé | Oui |
+| F5 | Expiration des parties inactives (24h par défaut) | Terminé | Oui |
+| F6 | Suppression réelle des données expirées (cascade) | Terminé | Oui |
 
-### 2.4 Gestion de session
-- **Anonymité** : Aucun compte utilisateur, aucune identification personnelle requise
-- **Durée de vie** : Une partie existe tant que les deux joueurs sont connectés
-- **Déconnexion** : Si un joueur quitte, la partie est annulée
-- **Historique** : Pas de sauvegarde de l'historique (données éphémères)
-- **Cookies/Session** : Utiliser des sessions côté serveur (basées sur JWT ou session tokens)
+### 3.2 Questions et catégories
 
-### 2.5 Interface utilisateur
-- **Mobile-first** : Design responsive, optimisé pour les petits écrans
-- **Dark mode** : Support du thème sombre
-- **Accessibilité** : WCAG 2.1 niveau AA minimum
-- **PWA** : Installer comme application sur mobile/desktop
-- **Offline ready** : Affichage d'un message si la connexion est perdue
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| Q1 | Sélection indépendante des catégories par chaque joueur | Terminé | Oui |
+| Q2 | Union des catégories choisies par les deux joueurs | Terminé | Oui |
+| Q3 | Déduplication des questions (jamais répétées) | Terminé | Oui |
+| Q4 | Absence de questions futures dans les réponses API | Terminé | Oui |
+| Q5 | Alternance des tours | Terminé | Oui |
+| Q6 | Confirmation mutuelle avant la question suivante | Terminé | Oui |
+| Q7 | Refus d'une action du mauvais joueur | Terminé | Oui |
 
-## 3. Règles du jeu
+### 3.3 Catégories secrètes
 
-### Règles de base
-1. Deux joueurs seulement par partie
-2. Les défis alternent entre les joueurs (Joueur 1 → Joueur 2 → Joueur 1, etc.)
-3. Chaque réponse doit être validée avant de voir la prochaine étape
-4. Temps limite optionnel par réponse (ex: 5 min)
-5. Aucun retour en arrière (pas de relecture des réponses précédentes)
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| S1 | Catégorie "intimité/érotique" réservée aux adultes (18+) | Terminé | Oui |
+| S2 | Consentement explicite requis pour les catégories secrètes | Terminé | Oui |
+| S3 | Exclusion de la catégorie si l'un des deux joueurs n'a pas consenti | Terminé | Oui |
 
-### Types de défis
-- **Questions ouvertes** : "Décrivez votre plus beau souvenir en 3 phrases"
-- **Défis créatifs** : "Inventer une histoire basée sur ces 3 mots..."
-- **Défis rapides** : "Choisissez entre A ou B et justifiez en 1 phrase"
-- **Défis mirroir** : Les deux joueurs répondent à la même question, puis comparent
+### 3.4 Chat temps réel
 
-### Modération
-- **Signalement** : Bouton pour signaler un contenu inapproprié
-- **Filtrage basique** : Détection de contenu explicite (listes noires de mots clés)
-- **Pas de suppression automatique** : Simple alerte visuelle
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| C1 | Envoi et réception de messages en temps réel | Terminé | Oui |
+| C2 | Historique des messages à la (re)connexion | Terminé | Oui |
+| C3 | Purge automatique des messages > 24h | Planifié | Non |
 
-## 4. Expérience utilisateur
+### 3.5 Protection et limites
 
-### Flux utilisateur
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| L1 | Protection contre les doubles clics (rate limiting socket) | Terminé | Oui |
+| L2 | Rate limiting sur les routes API (par IP) | Terminé | Oui |
+| L3 | Limite de longueur des réponses (5000 caractères max) | Terminé | Oui |
+| L4 | Limite de longueur des messages de chat | Terminé | Oui |
 
-#### Phase 1 : Démarrage
-```
-Visiteur → Cliquer "Commencer" → Créer partie → Afficher lien + écran d'attente
-```
+### 3.6 Reconnexion
 
-#### Phase 2 : Rejoindre
-```
-Visiteur avec lien → Accès direct → Rejoindre partie → Écran de connexion établie
-```
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| R1 | Rejoindre une partie en cours après déconnexion | Terminé | Oui |
+| R2 | Récupération de l'état de la partie et de l'historique | Terminé | Oui |
 
-#### Phase 3 : Jeu
-```
-Les deux joueurs → Voir défi → Saisir réponse → Valider → Voir réponses côte à côte → "Défi suivant"
-```
+### 3.7 Pages légales et navigation
 
-#### Phase 4 : Fin
-```
-Fin de partie (déconnexion ou limite atteinte) → Récapitulatif optionnel → Proposer nouveau jeu
-```
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| P1 | Écran de fin de partie avec statistiques | Terminé | Oui |
+| P2 | Page de règles du jeu | Terminé | Oui |
+| P3 | Politique de confidentialité | Terminé | Oui |
+| P4 | Conditions d'utilisation (page contact) | Terminé | Oui |
+| P5 | Page de contact avec email à compléter | Terminé | Oui |
+| P6 | Pied de page avec liens vers toutes les pages légales | Terminé | Oui |
 
-### Pages principales
-1. **Accueil** (`/`) - Bouton "Commencer" + Accès par code
-2. **Création** (`/create`) - Génération du lien
-3. **Attente** (`/wait/:gameId`) - Écran d'attente avant le démarrage
-4. **Jeu** (`/game/:gameId`) - Interface principale de gameplay
-5. **Fin** (`/end/:gameId`) - Résumé optionnel
+### 3.8 PWA
 
-## 5. Architecture technique
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| W1 | Manifeste d'application web | Terminé | Oui |
+| W2 | Service worker pour le cache hors ligne | Terminé | Oui |
+| W3 | Installation sur écran d'accueil | Terminé | Oui |
 
-### 5.1 Frontend
-- **Vue 3 + TypeScript** : Composants réactifs
-- **Vite** : Bundling ultra-rapide
-- **Pinia** : Gestion d'état simple (game store, ui store)
-- **Socket.IO Client** : Synchronisation en temps réel
-- **Tailwind CSS** : Styles utilitaires
-- **Vue Router** : Navigation entre pages
+### 3.9 Sécurité et confidentialité
 
-### 5.2 Backend
-- **Fastify** : Serveur HTTP performant et léger
-- **Socket.IO** : Gestion des connexions WebSocket
-- **Prisma** : ORM avec migrations de schéma
-- **PostgreSQL** : Base de données relationnelle
-- **JWT/Sessions** : Authentification sans compte permanent
+| ID | Fonctionnalité | Statut | Testée |
+|----|---------------|--------|--------|
+| S1 | Validation des données côté serveur (Zod) | Terminé | Oui |
+| S2 | Autorisation pour chaque route et événement Socket.IO | Terminé | Oui |
+| S3 | Jetons d'invitation et sessions temporaires (JWT) | Terminé | Oui |
+| S4 | CORS restrictif, HTTPS/WSS en production | Terminé | Oui |
+| S5 | Variables d'environnement validées | Terminé | Oui |
+| S6 | Gestionnaire d'erreurs centralisé, journaux structurés | Terminé | Oui |
+| S7 | Politique de suppression des données documentée | Terminé | Oui |
+| S8 | Absence de promesse de confidentialité absolue | Terminé | Oui |
 
-### 5.3 Base de données
-Schéma minimaliste :
-```
-- games (id, gameCode, status, createdAt, expiresAt)
-- players (id, gameId, joinedAt, lastActivity)
-- responses (id, gameId, playerId, challengeId, content, createdAt)
-- challenges (id, type, prompt, category, active)
-```
+## 4. Contraintes techniques
 
-## 6. Sécurité
+- Stack : Node.js, Fastify, Socket.IO, PostgreSQL, Prisma, Vue 3, Vite
+- Aucun compte utilisateur, aucun email, aucun mot de passe
+- Données stockées en base PostgreSQL, supprimées automatiquement après expiration
+- Pas de tracking tiers
+- Pas de promesse de confidentialité absolue
 
-### 6.1 Validations
-- **Longueur des entrées** : Max 5000 caractères par réponse
-- **Rate limiting** : Max 1 réponse par 3 secondes par joueur
-- **Validation côté serveur** : Toutes les entrées validées
+## 5. Non-fonctionnel
 
-### 6.2 Privacité
-- **Aucun stockage persistant** : Les parties sont effacées après 24h
-- **Pas de tracking** : Aucun cookie de suivi (sauf session)
-- **Pas de partage de données** : Les données restent entre les deux joueurs
-- **HTTPS obligatoire** : Chiffrement des communications
+- **Performance** : temps de réponse API < 200ms, latence WebSocket < 100ms
+- **Disponibilité** : le service doit être accessible 24/7 en production
+- **Sécurité** : HTTPS/WSS obligatoires en production, CORS restrictif
+- **Évolutivité** : architecture monorepo, séparation claire backend/frontend
+- **Maintenabilité** : code typé TypeScript, documentation complète, tests automatisés
 
-### 6.3 Protection
-- **CORS** : Configurer strictement les origines autorisées
-- **Sanitization** : Nettoyer les entrées HTML/JS
-- **SQL Injection** : Prisma + parameterized queries
-- **DDoS basique** : Rate limiting global
+## 6. État d'avancement
 
-## 7. Performance
+Voir `docs/PROJECT_STATUS.md`.
 
-### Cibles
-- **Temps de chargement** : < 3 secondes (Mobile 4G)
-- **Time to Interactive** : < 5 secondes
-- **Bundle size** : < 500 KB (gzippé)
-- **Latence Socket.IO** : < 200 ms
+## 7. Reste à faire avant mise en production
 
-### Optimisations
-- Lazy loading des composants
-- Compression Gzip/Brotli
-- Caching des assets statiques
-- Pagination des défis
-- Connection pooling PostgreSQL
-
-## 8. Accessibilité (WCAG 2.1 AA)
-
-- [ ] Contrastes suffisants (4.5:1 pour texte)
-- [ ] Navigation au clavier complète
-- [ ] Labels explicites pour les inputs
-- [ ] Textes alternatifs pour les images
-- [ ] Support des lecteurs d'écran
-- [ ] Notifications accessibles
-
-## 9. Limitations et non-fonctionnalités
-
-❌ **Pas de** :
-- Comptes utilisateurs permanents
-- Historique de parties sauvegardé
-- Système de points/classement
-- Personnalisation d'avatar/pseudonyme
-- Partage direct de contenu
-- Notifications push
-- Modes multi-joueurs (> 2)
-- Monétisation / Paiements
-
-## 10. Itérations futures (Scope 2)
-
-- [ ] Défis personnalisés (créer vos propres questions)
-- [ ] Choix de catégories avant de démarrer
-- [ ] Thème coloré de la partie
-- [ ] Export de la conversation (PDF)
-- [ ] Partage anonyme d'un résumé
-- [ ] Intégration avec réseaux sociaux (partager le lien)
-- [ ] Notifications push de rejoindre
-
-## 11. Définition de terminé (DoD)
-
-Une étape est "terminée" quand :
-- [ ] Code écrit et commité
-- [ ] Tests passent (unitaires + intégration)
-- [ ] Documentation mise à jour
-- [ ] Pas d'erreurs dans la console (browser & server)
-- [ ] `PROJECT_STATUS.md` mis à jour
-- [ ] La fonctionnalité peut être démontrée
+1. Choisir un nom de domaine et obtenir un certificat SSL/TLS
+2. Configurer un proxy inversé (Nginx, Caddy, Traefik)
+3. Définir les variables d'environnement de production
+4. Tester le parcours complet à deux joueurs sur la même instance
+5. Configurer les sauvegardes automatiques de la base de données
+6. Valider les documents juridiques avec une personne compétente en droit
+7. Configurer le monitoring et les alertes

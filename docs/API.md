@@ -1,508 +1,195 @@
-# API Documentation - Entre Nous
+# API Reference — Entre Nous
 
-## Base URL
+Base URL : `https://api.votre-domaine.com` (production) ou `http://localhost:3000` (développement)
 
+Toutes les routes nécessitent un jeton d'authentification JWT, transmis dans l'en-tête `Authorization: Bearer <token>`, sauf indication contraire.
+
+## Authentification
+
+Le jeton JWT est obtenu lors de la création ou de la jonction d'une partie. Il expire selon la configuration `JWT_EXPIRY` (défaut : 24 heures).
+
+## Endpoints
+
+### POST /api/games
+
+Crée une nouvelle partie (premier joueur).
+
+**Corps de la requête**
+```json
+{
+  "firstName": "Alice",
+  "lastName": "Martin",
+  "categories": ["social", "personnel"],
+  "adultConfirmed": false,
+  "consentAccepted": false
+}
 ```
-Production: https://api.entrenous.app
-Development: http://localhost:3000
+
+**Réponse (201)**
+```json
+{
+  "gameId": "abc123",
+  "gameCode": "XK9M2P",
+  "playerId": "p1",
+  "playerRole": 1,
+  "sessionToken": "eyJhbG...",
+  "expiresAt": "2025-10-28T02:40:00.000Z"
+}
 ```
 
-## Authentication
+### POST /api/games/join
 
-**Schema** : Bearer Token (JWT)
+Rejoint une partie existante (deuxième joueur).
 
+**Corps de la requête**
+```json
+{
+  "code": "XK9M2P",
+  "firstName": "Bob",
+  "lastName": "Dupont",
+  "categories": ["profond", "amusant"],
+  "adultConfirmed": false,
+  "consentAccepted": false
+}
 ```
-Authorization: Bearer <token>
+
+**Réponse (200)**
+```json
+{
+  "gameId": "abc123",
+  "gameCode": "XK9M2P",
+  "playerId": "p2",
+  "playerRole": 2,
+  "sessionToken": "eyJhbG...",
+  "expiresAt": "2025-10-28T02:40:00.000Z"
+}
 ```
 
-Tokens are generated automatically when creating/joining a game.
+### GET /api/games/:gameId/state
 
----
+Récupère l'état actuel de la partie (question courante, tour, statut, joueurs).
 
-## HTTP REST Endpoints
+**Réponse (200)**
+```json
+{
+  "status": "active",
+  "question": { "id": "q1", "prompt": "Quel est votre plus grand rêve ?" },
+  "turn": 1,
+  "total": 10,
+  "activePlayerId": "p1"
+}
+```
 
-### 1. Health Check
+### POST /api/games/:gameId/action
 
-#### `GET /health`
+Soumet une réponse ou passe une question.
 
-Verify server is running.
+**Corps de la requête**
+```json
+{
+  "kind": "answer",
+  "questionId": "q1",
+  "content": "Voyager autour du monde"
+}
+```
+ou
+```json
+{
+  "kind": "skip",
+  "questionId": "q1"
+}
+```
 
-**Response** (200 OK) :
+**Réponse (200)** : même structure que `GET /state`.
+
+### POST /api/games/:gameId/confirm
+
+Confirme avoir vu la réponse de l'autre joueur. Recharge l'état et le diffuse aux deux joueurs via Socket.IO.
+
+**Réponse (200)** : même structure que `GET /state`.
+
+### GET /api/games/:gameId/responses
+
+Récupère l'historique des questions et réponses déjà posées (jamais les questions futures).
+
+**Réponse (200)**
+```json
+[
+  {
+    "id": "r1",
+    "questionId": "q1",
+    "playerId": "p1",
+    "playerName": "Alice",
+    "playerRole": 1,
+    "kind": "answer",
+    "text": "Voyager autour du monde",
+    "createdAt": "2025-10-27T02:40:00.000Z"
+  }
+]
+```
+
+### GET /api/games/:gameId/lobby
+
+Récupère l'état de la salle d'attente (polling de secours).
+
+### GET /api/health
+
+Vérifie la santé du serveur.
+
+**Réponse (200)**
 ```json
 {
   "status": "ok",
-  "timestamp": "2025-10-26T11:30:00Z"
+  "timestamp": "2025-10-27T02:40:00.000Z",
+  "uptime": 12
 }
 ```
 
----
+## Événements Socket.IO
 
-### 2. Games
+Le serveur expose un namespace Socket.IO sur la même URL que l'API.
 
-#### `POST /games`
+### Connexion
 
-Create a new game.
-
-**Request Body** :
-```json
-{}
+Lors de la connexion, envoyer le jeton via `auth` :
+```javascript
+const socket = io(SOCKET_URL, { auth: { token: sessionToken } });
 ```
 
-**Response** (201 Created) :
-```json
-{
-  "id": "game_abc123",
-  "code": "ABC123",
-  "status": "waiting",
-  "createdAt": "2025-10-26T11:30:00Z",
-  "expiresAt": "2025-10-27T11:30:00Z",
-  "players": [],
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Errors** :
-- `500` : Server error
-
----
-
-#### `GET /games/:gameId`
-
-Get game information.
-
-**Path Parameters** :
-- `gameId` (string) : Game ID
-
-**Headers** :
-```
-Authorization: Bearer <token>
-```
-
-**Response** (200 OK) :
-```json
-{
-  "id": "game_abc123",
-  "code": "ABC123",
-  "status": "active",
-  "createdAt": "2025-10-26T11:30:00Z",
-  "players": [
-    {
-      "id": "player_1",
-      "role": 1,
-      "joinedAt": "2025-10-26T11:30:00Z"
-    },
-    {
-      "id": "player_2",
-      "role": 2,
-      "joinedAt": "2025-10-26T11:32:00Z"
-    }
-  ],
-  "currentChallenge": {
-    "id": "ch_001",
-    "type": "open_question",
-    "prompt": "Describe your best memory...",
-    "category": "personal"
-  }
-}
-```
-
-**Errors** :
-- `401` : Unauthorized
-- `404` : Game not found
-- `410` : Game expired
-
----
-
-#### `POST /games/:gameId/join`
-
-Join an existing game.
-
-**Path Parameters** :
-- `gameId` (string) : Game ID or code
-
-**Request Body** :
-```json
-{}
-```
-
-**Response** (200 OK) :
-```json
-{
-  "id": "game_abc123",
-  "code": "ABC123",
-  "status": "active",
-  "players": [
-    { "id": "player_1", "role": 1 },
-    { "id": "player_2", "role": 2 }
-  ],
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Errors** :
-- `400` : Invalid code
-- `404` : Game not found
-- `409` : Game full (2 players already)
-- `410` : Game expired
-
----
-
-## WebSocket (Socket.IO) Events
-
-### Connection
-
-#### Client → Server: `connect`
-
-Establish a WebSocket connection.
-
-**Payload** :
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
----
-
-### Game Management
-
-#### Client → Server: `game:create`
-
-Create a new game.
-
-**Payload** :
-```json
-{}
-```
-
-**Server → Client: `game:created`**
-```json
-{
-  "gameId": "game_abc123",
-  "code": "ABC123",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "playerId": "player_1"
-}
-```
-
----
-
-#### Client → Server: `game:join`
-
-Join a game.
-
-**Payload** :
-```json
-{
-  "code": "ABC123"
-}
-```
-
-**Server → Client: `game:joined`**
-```json
-{
-  "gameId": "game_abc123",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "playerId": "player_2",
-  "role": 2
-}
-```
-
-**Server → All: `game:playerJoined`** (broadcast to all sockets in this game)
-```json
-{
-  "playerId": "player_2",
-  "role": 2,
-  "totalPlayers": 2
-}
-```
-
----
-
-#### Server → Client: `game:started`
-
-Game is ready to start (2 players connected).
-
-**Payload** :
-```json
-{
-  "gameId": "game_abc123",
-  "firstChallenge": {
-    "id": "ch_001",
-    "type": "open_question",
-    "prompt": "Describe your best memory in 3 sentences"
-  }
-}
-```
-
----
-
-#### Client → Server: `game:leave`
-
-Leave the game (voluntarily).
-
-**Payload** :
-```json
-{}
-```
-
-**Server → All: `game:playerLeft`** (broadcast)
-```json
-{
-  "playerId": "player_1",
-  "reason": "user_left"
-}
-```
-
----
-
-#### Server → Client: `game:ended`
-
-Game is terminated.
-
-**Payload** :
-```json
-{
-  "gameId": "game_abc123",
-  "reason": "player_disconnected",
-  "endedAt": "2025-10-26T11:45:00Z"
-}
-```
-
----
-
-### Challenges & Responses
-
-#### Server → Client: `challenge:new`
-
-New challenge presented.
-
-**Payload** :
-```json
-{
-  "challengeId": "ch_002",
-  "type": "open_question",
-  "prompt": "What is your biggest dream?",
-  "category": "personal",
-  "timeLimit": null
-}
-```
-
----
-
-#### Client → Server: `response:submit`
-
-Submit a response to a challenge.
-
-**Payload** :
-```json
-{
-  "challengeId": "ch_002",
-  "content": "My biggest dream is to travel the world."
-}
-```
-
-**Server-side validation** :
-- `content` : 1 to 5000 characters
-- No HTML/JavaScript
-- Rate limit: max 1 submission per 3 seconds
-
-**Server → Client: `response:submitted`**
-```json
-{
-  "status": "ok",
-  "challengeId": "ch_002"
-}
-```
-
-**Server → Other Player: `response:received`** (broadcast to other player)
-```json
-{
-  "playerRole": 1,
-  "hasResponded": true
-}
-```
-
-**Errors** :
-- `400` : Validation failed
-- `429` : Rate limited
-
----
-
-#### Client → Server: `challenge:ready`
-
-Signal ready for next challenge.
-
-**Payload** :
-```json
-{
-  "challengeId": "ch_002"
-}
-```
-
-**Server → All: `challenge:next`** (broadcast once both players ready)
-```json
-{
-  "challengeId": "ch_003",
-  "type": "mirror_question",
-  "prompt": "List 3 qualities of your partner (guest)",
-  "responses": [
-    {
-      "playerRole": 1,
-      "content": "My dream is to explore..."
-    },
-    {
-      "playerRole": 2,
-      "content": "I want to become..."
-    }
-  ]
-}
-```
-
----
-
-### Error Handling
-
-#### Server → Client: `error`
-
-General game error.
-
-**Payload** :
-```json
-{
-  "code": "GAME_ERROR",
-  "message": "Error processing your response",
-  "timestamp": "2025-10-26T11:45:00Z"
-}
-```
-
-**Error Codes** :
-| Code | Meaning |
-|------|---------|
-| `AUTH_FAILED` | Invalid token |
-| `GAME_NOT_FOUND` | Game not found |
-| `GAME_FULL` | Game full |
-| `INVALID_CHALLENGE` | Invalid challenge |
-| `VALIDATION_ERROR` | Invalid data |
-| `RATE_LIMITED` | Too many requests |
-| `INTERNAL_ERROR` | Server error |
-
----
-
-## Response Formats
-
-### Challenge Object
-
-```json
-{
-  "id": "ch_001",
-  "type": "open_question|creative|quick|mirror",
-  "prompt": "Describe your best memory...",
-  "category": "social|personal|fun|deep",
-  "timeLimit": 300000,
-  "active": true
-}
-```
-
-### Player Object
-
-```json
-{
-  "id": "player_abc",
-  "role": 1|2,
-  "joinedAt": "2025-10-26T11:30:00Z",
-  "lastActivity": "2025-10-26T11:35:00Z"
-}
-```
-
-### Response Object
-
-```json
-{
-  "id": "res_001",
-  "challengeId": "ch_001",
-  "playerRole": 1,
-  "content": "My best memory is...",
-  "createdAt": "2025-10-26T11:35:00Z"
-}
-```
-
-### Game Object
-
-```json
-{
-  "id": "game_abc123",
-  "code": "ABC123",
-  "status": "waiting|active|ended",
-  "createdAt": "2025-10-26T11:30:00Z",
-  "expiresAt": "2025-10-27T11:30:00Z",
-  "players": [Player, Player],
-  "currentChallenge": Challenge,
-  "responses": [Response]
-}
-```
-
----
-
-## Rate Limiting
-
-Per-player limits :
-- **Create game** : 10 per hour
-- **Submit response** : 1 per 3 seconds
-- **Global events** : 1000 per minute
-
-**Response** (429 Too Many Requests) :
-```json
-{
-  "error": "rate_limited",
-  "retryAfter": 60
-}
-```
-
----
-
-## CORS Policy
-
-```
-Allowed Origins:
-  - http://localhost:3000
-  - http://localhost:5173
-  - https://entrenous.app
-  - https://www.entrenous.app
-
-Allowed Methods:
-  - GET
-  - POST
-  - OPTIONS
-
-Allowed Headers:
-  - Content-Type
-  - Authorization
-
-Credentials: true
-```
-
----
-
-## Status Codes
-
-| Code | Meaning |
-|------|---------|
-| `200` | OK |
-| `201` | Created |
-| `400` | Bad Request |
-| `401` | Unauthorized |
-| `404` | Not Found |
-| `409` | Conflict |
-| `410` | Gone (game expired) |
-| `429` | Too Many Requests |
-| `500` | Internal Server Error |
-| `503` | Service Unavailable |
-
----
-
-## Versioning
-
-API Version: **v1**
-
-Future versions will be prefixed: `/api/v2/...`
+### Événements côté client → serveur
+
+| Événement | Description |
+|-----------|-------------|
+| `game:join` | Rejoint la salle de la partie (nécessite un token valide) |
+| `chat:send` | Envoie un message de chat (`{ content: "..." }`) |
+| `game:action` | Soumet une réponse ou passe une question |
+
+### Événements côté serveur → client
+
+| Événement | Description |
+|-----------|-------------|
+| `game:state` | État actuel de la partie (diffusé aux deux joueurs) |
+| `chat:history` | Historique des messages de la partie |
+| `chat:message` | Nouveau message de chat |
+| `chat:error` | Erreur d'envoi de message |
+| `game:error` | Erreur d'action de jeu (403, 409, 410, 429, etc.) |
+| `connect` / `disconnect` | État de la connexion socket |
+
+## Codes d'erreur
+
+| Code | Signification |
+|------|---------------|
+| 400 | Requête invalide (données manquantes ou malformées) |
+| 401 | Session invalide ou expirée |
+| 403 | Non autorisé pour cette partie/action |
+| 409 | Conflit (partie déjà complète, mauvais tour, etc.) |
+| 410 | Partie expirée ou terminée |
+| 429 | Trop de requêtes (rate limiting) |
+| 500 | Erreur interne du serveur |
+
+## Sécurité
+
+- **CORS** : configuré de manière restrictive via `CORS_ORIGIN`.
+- **Rate limiting** : appliqué par IP sur les routes API et par socket sur les événements Socket.IO.
+- **JWT** : secret requis (min. 32 caractères), expiration configurable.
+- **Validation** : toutes les entrées sont validées avec Zod avant traitement.
