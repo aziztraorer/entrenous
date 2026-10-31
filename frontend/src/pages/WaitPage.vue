@@ -110,19 +110,16 @@ const applyLobby = (lobby: Lobby) => {
   }
 }
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+
 const pollLobby = async () => {
   if (!gameId) return
-  const apiUrls = [
-    `http://localhost:3000/api/games/${gameId}/lobby`,
-    `/api/games/${gameId}/lobby`,
-  ]
-  for (const url of apiUrls) {
-    try {
-      const res = await fetch(url)
-      if (!res.ok) continue
-      applyLobby(await res.json())
-      return
-    } catch { continue }
+  try {
+    const res = await fetch(`${API_URL}/api/games/${gameId}/lobby`)
+    if (!res.ok) return
+    applyLobby(await res.json())
+  } catch {
+    // erreur réseau : on retentera au prochain tour de polling
   }
 }
 

@@ -148,42 +148,24 @@ const joinGame = async () => {
   errorMessage.value = ''
 
   try {
-    // Appel API au backend pour rejoindre la partie (avec fallback d'URLs)
-    const apiUrls = [
-      'http://localhost:3000/api/games/join',
-      '/api/games/join',
-      'http://127.0.0.1:3000/api/games/join',
-    ]
+    // Appel API au backend pour rejoindre la partie
+    const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/games/join`
 
-    let response: Response | null = null
-    let lastError = ''
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: gameCode.value,
+        firstName: firstName.value.trim(),
+        lastName: lastName.value.trim(),
+        categories: selectedCategories.value,
+      })
+    })
 
-    for (const url of apiUrls) {
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: gameCode.value,
-            firstName: firstName.value.trim(),
-            lastName: lastName.value.trim(),
-            categories: selectedCategories.value,
-          })
-        })
-        if (response.ok) break
-        // Réponse HTTP d'erreur (ex: 404 partie introuvable) : inutile d'essayer les autres URLs
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Code invalide ou partie fermée')
-      } catch (e) {
-        // Erreur réseau : on tente l'URL suivante
-        lastError = (e as Error).message
-        response = null
-        continue
-      }
-    }
-
-    if (!response || !response.ok) {
-      throw new Error(lastError || 'Impossible de rejoindre la partie')
+    if (!response.ok) {
+      // Réponse HTTP d'erreur (ex: 404 partie introuvable)
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Code invalide ou partie fermée')
     }
 
     const data = await response.json()

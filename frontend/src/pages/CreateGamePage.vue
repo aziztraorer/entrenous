@@ -192,36 +192,21 @@ const createGame = async () => {
   apiError.value = ''
 
   try {
-    // Essayer différentes URLs
-    const apiUrls = [
-      'http://localhost:3000/api/games',
-      '/api/games',
-      'http://127.0.0.1:3000/api/games',
-    ]
+    const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/games`
 
-    let response: Response | null = null
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: firstName.value.trim(),
+        lastName: lastName.value.trim(),
+        categories: selectedCategories.value,
+      })
+    })
 
-    for (const url of apiUrls) {
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            firstName: firstName.value.trim(),
-            lastName: lastName.value.trim(),
-            categories: selectedCategories.value,
-          })
-        })
-        
-        if (response.ok) break
-      } catch {
-        continue
-      }
-    }
-
-    if (!response || !response.ok) {
-      const errorData = await response?.json().catch(() => ({}))
-      throw new Error(errorData.message || 'Impossible de créer la partie. Vérifiez que le backend est en cours d\'exécution sur http://localhost:3000')
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData.message || 'Impossible de créer la partie')
     }
 
     const data = await response.json()
