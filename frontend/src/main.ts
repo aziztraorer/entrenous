@@ -1,18 +1,16 @@
+// Service worker : enregistré par le fichier registerSW.js injecté par
+// vite-plugin-pwa (registerType: 'autoUpdate'). Aucun enregistrement manuel ici,
+// pour éviter deux enregistrements concurrents (cause classique de conflit).
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './styles/globals.css'
 
-// Service worker : géré par vite-plugin-pwa (en prod il enregistre sw.js lui-même).
-// En dev, /sw.js n'existe pas (Vite renvoie du HTML → erreur MIME), d'où ce guard.
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .catch((err) => console.log('SW registration failed: ', err))
-  })
-}
+// Service worker : enregistré par le fichier registerSW.js injecté par
+// vite-plugin-pwa (registerType: 'autoUpdate'). Aucun enregistrement manuel ici,
+// pour éviter deux enregistrements concurrents (cause classique de conflit).
 
 const app = createApp(App)
 

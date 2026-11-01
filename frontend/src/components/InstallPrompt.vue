@@ -50,6 +50,16 @@ function onBeforeInstallPrompt(e: Event) {
   tryShow()
 }
 
+/** Événement capté par le script inline de index.html, avant le montage de Vue */
+function retrieveEarlyPrompt() {
+  const early = (window as any).__installPromptEvent
+  if (early && !deferredPrompt.value) {
+    deferredPrompt.value = early as BeforeInstallPromptEvent
+    ;(window as any).__installPromptEvent = null
+    tryShow()
+  }
+}
+
 function tryShow() {
   if (isStandalone()) return
   if (localStorage.getItem(DEFERRED_KEY) === '1') return
@@ -98,8 +108,8 @@ onMounted(() => {
     platform.value = detectPlatform()
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
     window.addEventListener('appinstalled', onAppInstalled)
-    // Propose immédiatement ; beforeinstallprompt peut arriver plus tard et
-    // basculera automatiquement vers la fenêtre native (install()).
+    // Récupère l'événement capté avant le montage, puis écoute les suivants.
+    retrieveEarlyPrompt()
     tryShow()
     setTimeout(tryShow, 1500)
   } catch {
@@ -123,7 +133,8 @@ onUnmounted(() => {
         </p>
 
         <div class="install-actions">
-          <button class="install-btn" @click="install">Installer l'application</button>
+          <!-- Bouton natif : visible uniquement quand l'installation est réellement possible -->
+          <button v-if="deferredPrompt" class="install-btn" @click="install">Installer l'application</button>
           <button class="continue-btn" @click="dismiss">Continuer sur le site</button>
         </div>
 

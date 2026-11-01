@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Entre Nous" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Le manifeste est injecté par vite-plugin-pwa (manifest.webmanifest) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital@0;1&display=swap" rel="stylesheet">
@@ -18,6 +18,15 @@
   </head>
   <body>
     <div id="app"></div>
+    <script>
+      // Capture TÔT l'événement beforeinstallprompt : il peut se déclencher
+      // avant le montage de l'app Vue, et un listener ajouté trop tard le raterait.
+      window.__installPromptEvent = null;
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__installPromptEvent = e;
+      });
+    </script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

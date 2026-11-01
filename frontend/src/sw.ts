@@ -2,11 +2,15 @@
 // Service worker (injectManifest strategy) — precache géré par workbox via vite-plugin-pwa
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
+import { clientsClaim } from 'workbox-core';
 
 declare const self: ServiceWorkerGlobalScope;
 
 precacheAndRoute((self as any).__WB_MANIFEST);
 cleanupOutdatedCaches();
+// Prend immédiatement le contrôle des pages : permet une mise à jour
+// effective dès le rechargement suivant (registerType 'autoUpdate').
+clientsClaim();
 
 // Fallback navigation vers l'app shell
 registerRoute(
@@ -20,6 +24,10 @@ registerRoute(
   ({ url }) => url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket.io/'),
   async ({ request }) => fetch(request),
 );
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
 
 self.addEventListener('message', (event) => {
   if ((event as any).data && (event as any).data.type === 'SKIP_WAITING') self.skipWaiting();
