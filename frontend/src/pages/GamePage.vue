@@ -33,6 +33,9 @@
           </span>
         </div>
 
+        <!-- Question active : affichée aux DEUX joueurs en permanence, quel que soit le tour -->
+        <h1 v-if="gameStatus === 'active'" class="current-question">{{ challenge }}</h1>
+
         <!-- Attente de la réponse de l'autre joueur -->
         <div v-if="waitingForOther && otherPlayerResponse" class="waiting-other">
           <div class="waiting-icon">
@@ -50,8 +53,6 @@
 
         <!-- Question à répondre (mon tour) -->
         <div v-if="isMyTurn && !waitingForOther && gameStatus === 'active'">
-          <h1>{{ challenge }}</h1>
-
           <div class="response-area">
             <textarea v-model="response" placeholder="Écris ta réponse ici..."></textarea>
           </div>
