@@ -16,8 +16,10 @@ const updateReady = ref(false)
 let waitingWorker: ServiceWorker | null = null
 
 function onWorkerStateChange() {
-  // Quand le SW en attente passe à 'installed' → nouvelle version prête
-  if (waitingWorker?.state === 'installed' && navigator.serviceWorker.controller) {
+  // Quand le SW en attente passe à 'installed' → nouvelle version prête.
+  // On n'exige PAS navigator.serviceWorker.controller : sur une visite site
+  // normal (page chargée sans contrôleur), la bannière doit s'afficher aussi.
+  if (waitingWorker?.state === 'installed') {
     updateReady.value = true
   }
 }
@@ -36,6 +38,11 @@ onMounted(async () => {
   try {
     const reg = await navigator.serviceWorker.getRegistration()
     if (!reg) return
+    // CAS 0 : aucune mise à jour en attente → on déclenche une vérification
+    // immédiate auprès du serveur (utile pour les visites sans rechargement)
+    if (!reg.waiting && !reg.installing) {
+      reg.update().catch(() => {})
+    }
     // CAS 1 : un SW en attente existe déjà (mise à jour prête au chargement)
     if (reg.waiting) {
       waitingWorker = reg.waiting
