@@ -46,9 +46,18 @@ async function registerPlugins() {
   await fastify.register(fastifyCors, cors);
 
   // Rate limiting
+  // Audit : 100/15 min par IP saturait une partie à 2 joueurs légitime
+  // (state + responses + confirm × 2 joueurs). On monte le global et on
+  // ajoute un Retry-After lisible côté client.
   await fastify.register(fastifyRateLimit, {
-    max: 100,
+    global: true,
+    max: 400,
     timeWindow: '15 minutes',
+    errorResponseBuilder: function (_request: unknown, context: { after: number }) {
+      return {
+        message: `Trop de requêtes, réessaie dans ${Math.ceil(context.after / 1000)} secondes.`,
+      };
+    },
   });
 }
 

@@ -160,6 +160,9 @@ export async function gameRoutes(fastify: FastifyInstance) {
    * GET /api/games/code/:code — Valider un lien d'invitation (avant de rejoindre)
    */
   fastify.get<{ Params: { code: string } }>('/api/games/code/:code', async (request, reply) => {
+    const ip = request.ip || 'unknown';
+    // Audit V3 : rate-limit dédié à l'énumération de codes (30/min par IP)
+    if (!checkRate(joinRateBuckets, ip, 30, 60000)) return reply.status(429).send({ message: 'Trop de requêtes. Réessaie dans une minute.' });
     const code = request.params.code.trim().toUpperCase();
     if (!/^[A-Z0-9]{6}$/.test(code)) {
       return reply.status(400).send({ message: 'Code invalide.' });
@@ -185,14 +188,23 @@ export async function gameRoutes(fastify: FastifyInstance) {
 
   /**
    * GET /api/games/:gameId/lobby — Salle d'attente (polling de secours)
+   * Audit V2 : exige une session JWT valide ET l'appartenance à la partie.
+   * Ne renvoie que les prénoms (jamais les noms de famille).
    */
   fastify.get<{ Params: { gameId: string } }>('/api/games/:gameId/lobby', async (request, reply) => {
+    const ip = request.ip || 'unknown';
+    if (!checkRate(joinRateBuckets, ip, 60, 60000)) return reply.status(429).send({ message: 'Trop de requêtes.' });
+    const token = request.headers.authorization?.replace(/^Bearer /, '') ?? '';
+    const session = GameService.verifySession(token);
+    if (!session || session.gameId !== request.params.gameId) return reply.status(401).send({ message: 'Session invalide ou expirée.' });
     try {
       const lobby = await GameService.getLobby(request.params.gameId);
       if (!lobby) {
         return reply.status(404).send({ message: 'Partie introuvable.' });
       }
-      return reply.send(lobby);
+      // Filtrage : seul le prénom est exposé (le nom de famille reste privé)
+      const sanitized = { ...lobby, players: lobby.players.map((p) => ({ id: p.id, firstName: p.firstName, role: p.role })) };
+      return reply.send(sanitized);
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ message: 'Erreur interne du serveur.' });
