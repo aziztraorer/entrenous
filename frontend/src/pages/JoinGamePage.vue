@@ -254,9 +254,11 @@ const joinGame = async () => {
   color: var(--accent-rose);
 }
 
-.chip-icon svg {
+/* :deep() requis : le SVG est injecté via v-html et n'a pas l'attribut scoped */
+.chip-icon :deep(svg) {
   width: 100%;
   height: 100%;
+  stroke: currentColor;
 }
 
 .chip-name {

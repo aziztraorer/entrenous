@@ -504,7 +504,8 @@ label {
   margin: 0 auto 0.5rem;
 }
 
-.category-icon svg {
+/* :deep() requis : le SVG est injecté via v-html et n'a pas l'attribut scoped */
+.category-icon :deep(svg) {
   width: 100%;
   height: 100%;
   stroke: currentColor;
