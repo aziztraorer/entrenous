@@ -112,13 +112,26 @@
           </div>
         </div>
 
+        <!-- Garde 18+ : visible uniquement si la catégorie érotique est sélectionnée -->
+        <div v-if="eroticSelected()" class="adult-consent">
+          <p><strong>Catégorie réservée aux adultes (18+)</strong></p>
+          <label class="consent-line">
+            <input type="checkbox" v-model="adultConfirmed" />
+            Je confirme être majeur(e) (18 ans ou plus).
+          </label>
+          <label class="consent-line">
+            <input type="checkbox" v-model="consentAccepted" />
+            J'accepte de voir des contenus érotiques avec mon/ma partenaire.
+          </label>
+        </div>
+
         <div class="modal-buttons">
           <button @click="closeCategoryModal" class="btn-cancel">
             Annuler
           </button>
           <button
             @click="createGame"
-            :disabled="selectedCategories.length === 0 || isLoading"
+            :disabled="selectedCategories.length === 0 || isLoading || (eroticSelected() && (!adultConfirmed || !consentAccepted))"
             class="btn-confirm"
           >
             {{ isLoading ? 'Création...' : 'Créer la partie' }}
@@ -142,6 +155,13 @@ const difficulty = ref('medium')
 const isLoading = ref(false)
 const showCategoryModal = ref(false)
 const selectedCategories = ref<string[]>([])
+// Consentement 18+ requis pour la catégorie érotique
+const adultConfirmed = ref(false)
+const consentAccepted = ref(false)
+
+function eroticSelected(): boolean {
+  return selectedCategories.value.includes('erotic')
+}
 const apiError = ref('')
 
 const categories = ref([
@@ -150,6 +170,7 @@ const categories = ref([
   { id: 'fun', name: 'Amusant', icon: 'message-circle', challengeCount: 7 },
   { id: 'deep', name: 'Profond', icon: 'smile', challengeCount: 7 },
   { id: 'creative', name: 'Créatif', icon: 'plus-circle', challengeCount: 5 },
+  { id: 'erotic', name: 'Érotique (18+)', icon: 'heart-flame', challengeCount: 100 },
 ])
 
 const getCategoryIcon = (categoryId: string): string => {
@@ -159,6 +180,7 @@ const getCategoryIcon = (categoryId: string): string => {
     'message-circle': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
     smile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
     'plus-circle': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
+    'heart-flame': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path><path d="M12 8v4"></path><path d="M12 15h.01"></path></svg>',
   }
   return icons[categoryId] || ''
 }
@@ -200,6 +222,8 @@ const createGame = async () => {
         firstName: firstName.value.trim(),
         lastName: lastName.value.trim(),
         categories: selectedCategories.value,
+        adultConfirmed: eroticSelected() ? adultConfirmed.value : undefined,
+        consentAccepted: eroticSelected() ? consentAccepted.value : undefined,
       })
     })
 
@@ -494,6 +518,29 @@ label {
 .category-count {
   font-size: 0.8rem;
   opacity: 0.7;
+}
+
+.adult-consent {
+  background: rgba(192, 122, 122, 0.12);
+  border: 1px solid var(--accent-rose);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.adult-consent p {
+  margin: 0 0 0.5rem 0;
+  color: var(--accent-burgundy);
+}
+
+.consent-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
+  color: var(--text-primary);
 }
 
 .modal-buttons {

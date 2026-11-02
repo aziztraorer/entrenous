@@ -24,7 +24,7 @@ export function buildDeck(categories: Category[], source = QUESTIONS) {
 }
 export function initialize(players: Array<{ id: string; categories: string; adultConsent: boolean }>): EngineState {
   const categories = normalizeCategories(players.flatMap(p => JSON.parse(p.categories)));
-  const allowed = categories.filter(c => c !== 'intimacy' || players.every(p => p.adultConsent));
+  const allowed = categories.filter(c => (c !== 'intimacy' && c !== 'erotic') || players.every(p => p.adultConsent));
   const deck = buildDeck(allowed);
   for (let i = deck.length - 1; i > 0; i--) {
     const j = randomInt(i + 1);[deck[i], deck[j]] = [deck[j], deck[i]];

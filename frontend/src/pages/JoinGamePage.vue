@@ -68,10 +68,23 @@
           </div>
         </div>
 
+        <!-- Garde 18+ : visible uniquement si la catégorie érotique est sélectionnée -->
+        <div v-if="eroticSelected" class="adult-consent">
+          <p><strong>Catégorie réservée aux adultes (18+)</strong></p>
+          <label class="consent-line">
+            <input type="checkbox" v-model="adultConfirmed" />
+            Je confirme être majeur(e) (18 ans ou plus).
+          </label>
+          <label class="consent-line">
+            <input type="checkbox" v-model="consentAccepted" />
+            J'accepte de voir des contenus érotiques avec mon/ma partenaire.
+          </label>
+        </div>
+
         <!-- Join Button -->
         <button
           @click="joinGame"
-          :disabled="isLoading || gameCode.length !== 6 || !firstName.trim() || !lastName.trim() || selectedCategories.length === 0"
+          :disabled="isLoading || gameCode.length !== 6 || !firstName.trim() || !lastName.trim() || selectedCategories.length === 0 || (eroticSelected && (!adultConfirmed || !consentAccepted))"
           class="join-button"
         >
           <span>🎯</span> {{ isLoading ? 'Connexion...' : 'Rejoindre' }}
@@ -98,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiUrl } from '@/config/env'
 
@@ -123,8 +136,13 @@ const categories = [
   { id: 'fun', name: 'Amusant' },
   { id: 'deep', name: 'Profond' },
   { id: 'creative', name: 'Créatif' },
+  { id: 'erotic', name: 'Érotique (18+)' },
 ]
 const selectedCategories = ref<string[]>([])
+// Consentement 18+ requis pour la catégorie érotique
+const adultConfirmed = ref(false)
+const consentAccepted = ref(false)
+const eroticSelected = computed(() => selectedCategories.value.includes('erotic'))
 
 const toggleCategory = (id: string) => {
   const i = selectedCategories.value.indexOf(id)
@@ -158,6 +176,8 @@ const joinGame = async () => {
         firstName: firstName.value.trim(),
         lastName: lastName.value.trim(),
         categories: selectedCategories.value,
+        adultConfirmed: eroticSelected.value ? adultConfirmed.value : undefined,
+        consentAccepted: eroticSelected.value ? consentAccepted.value : undefined,
       })
     })
 
@@ -344,6 +364,28 @@ label {
 
 .join-button:hover:not(:disabled) {
   background: #a86868;
+}
+
+.adult-consent {
+  background: rgba(192, 122, 122, 0.12);
+  border: 1px solid var(--accent-rose);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.adult-consent p {
+  margin: 0 0 0.5rem 0;
+  color: var(--accent-burgundy);
+}
+
+.consent-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 400;
+  font-size: 0.9rem;
+  margin-bottom: 0.4rem;
 }
 
 .join-button:disabled {

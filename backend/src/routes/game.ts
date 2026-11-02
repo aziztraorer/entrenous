@@ -39,7 +39,7 @@ function validateBody(body: NameBody) {
     return { error: 'Choisis au moins une catégorie de questions.' };
   }
   const adultConsent = body.adultConfirmed === true && body.consentAccepted === true;
-  if (categories.includes('intimacy') && !adultConsent) {
+  if ((categories.includes('intimacy') || categories.includes('erotic')) && !adultConsent) {
     return { error: 'Cette catégorie nécessite une déclaration de majorité et ton consentement explicite.' };
   }
   return { firstName, lastName, categories, adultConsent };
