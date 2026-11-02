@@ -25,9 +25,16 @@ interface NameBody {
 function validateBody(body: NameBody) {
   const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : '';
   const lastName = typeof body.lastName === 'string' ? body.lastName.trim() : '';
-  const categories = Array.isArray(body.categories)
-    ? normalizeCategories(body.categories.filter((c): c is string => typeof c === 'string'))
-    : [];
+
+  // Accepter une catégorie seule (string) ou plusieurs (array), puis dédoublonner
+  let categoriesRaw: string[] = [];
+  if (Array.isArray(body.categories)) {
+    categoriesRaw = body.categories.filter((c): c is string => typeof c === 'string');
+  } else if (typeof body.categories === 'string' && body.categories.trim()) {
+    categoriesRaw = [body.categories.trim()];
+  }
+
+  const categories = normalizeCategories(categoriesRaw);
 
   if (!firstName || !lastName) {
     return { error: 'Merci d\'indiquer ton prénom et ton nom.' };
