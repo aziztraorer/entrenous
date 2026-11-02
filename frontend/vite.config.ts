@@ -11,7 +11,9 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
-      registerType: 'autoUpdate',
+      // Mode 'prompt' : la nouvelle version attend que l'utilisateur clique
+      // sur le bouton « Mettre à jour » de la bannière (UpdatePrompt.vue).
+      registerType: 'prompt',
       devOptions: { enabled: false },
       injectManifest: {
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,

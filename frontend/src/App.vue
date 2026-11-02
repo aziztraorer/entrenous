@@ -2,11 +2,13 @@
   <div id="app">
     <router-view />
     <InstallPrompt />
+    <UpdatePrompt />
   </div>
 </template>
 
 <script setup lang="ts">
 import InstallPrompt from '@/components/InstallPrompt.vue'
+import UpdatePrompt from '@/components/UpdatePrompt.vue'
 </script>
 
 <style>
