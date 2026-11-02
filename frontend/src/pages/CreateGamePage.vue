@@ -165,11 +165,11 @@ function eroticSelected(): boolean {
 const apiError = ref('')
 
 const categories = ref([
-  { id: 'social', name: 'Social', icon: 'users', challengeCount: 7 },
-  { id: 'personal', name: 'Personnel', icon: 'target', challengeCount: 7 },
-  { id: 'fun', name: 'Amusant', icon: 'message-circle', challengeCount: 7 },
-  { id: 'deep', name: 'Profond', icon: 'smile', challengeCount: 7 },
-  { id: 'creative', name: 'Créatif', icon: 'plus-circle', challengeCount: 5 },
+  { id: 'social', name: 'Social', icon: 'users', challengeCount: 50 },
+  { id: 'personal', name: 'Personnel', icon: 'target', challengeCount: 50 },
+  { id: 'fun', name: 'Amusant', icon: 'message-circle', challengeCount: 50 },
+  { id: 'deep', name: 'Profond', icon: 'smile', challengeCount: 50 },
+  { id: 'creative', name: 'Créatif', icon: 'plus-circle', challengeCount: 50 },
   { id: 'erotic', name: 'Érotique (18+)', icon: 'heart-flame', challengeCount: 100 },
 ])
 

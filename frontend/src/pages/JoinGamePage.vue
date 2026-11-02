@@ -54,7 +54,7 @@
         <!-- Categories (catégories privées du joueur 2) -->
         <div class="form-group">
           <label>Tes catégories * (privées, l'autre joueur ne les voit pas)</label>
-          <div class="category-chips">
+          <div class="category-grid-join">
             <button
               v-for="cat in categories"
               :key="cat.id"
@@ -63,7 +63,9 @@
               :class="{ selected: selectedCategories.includes(cat.id) }"
               @click="toggleCategory(cat.id)"
             >
-              {{ cat.name }}
+              <span class="chip-icon" v-html="getCategoryIcon(cat.id)"></span>
+              <span class="chip-name">{{ cat.name }}</span>
+              <span class="chip-count">{{ cat.count }} questions</span>
             </button>
           </div>
         </div>
@@ -131,13 +133,25 @@ if (urlCode && /^[A-Z0-9]{6}$/i.test(urlCode)) {
 }
 
 const categories = [
-  { id: 'social', name: 'Social' },
-  { id: 'personal', name: 'Personnel' },
-  { id: 'fun', name: 'Amusant' },
-  { id: 'deep', name: 'Profond' },
-  { id: 'creative', name: 'Créatif' },
-  { id: 'erotic', name: 'Érotique (18+)' },
+  { id: 'social', name: 'Social', icon: 'users', count: 50 },
+  { id: 'personal', name: 'Personnel', icon: 'target', count: 50 },
+  { id: 'fun', name: 'Amusant', icon: 'message-circle', count: 50 },
+  { id: 'deep', name: 'Profond', icon: 'smile', count: 50 },
+  { id: 'creative', name: 'Créatif', icon: 'plus-circle', count: 50 },
+  { id: 'erotic', name: 'Érotique (18+)', icon: 'heart-flame', count: 100 },
 ]
+
+const getCategoryIcon = (categoryId: string): string => {
+  const icons: Record<string, string> = {
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="9"></circle></svg>',
+    'message-circle': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+    smile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>',
+    'plus-circle': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>',
+    'heart-flame': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path><path d="M12 8v4"></path><path d="M12 15h.01"></path></svg>',
+  }
+  return icons[categoryId] || ''
+}
 const selectedCategories = ref<string[]>([])
 // Consentement 18+ requis pour la catégorie érotique
 const adultConfirmed = ref(false)
@@ -212,25 +226,55 @@ const joinGame = async () => {
 </script>
 
 <style scoped>
-.category-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+/* Grille de cartes catégorie : icône au-dessus du nom, compteur en dessous */
+.category-grid-join {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.6rem;
 }
 
 .chip {
-  padding: 0.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.75rem 0.5rem;
   border: 1px solid var(--border-subtle);
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--bg-card);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.chip-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--accent-rose);
+}
+
+.chip-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.chip-name {
+  font-weight: 600;
+}
+
+.chip-count {
+  font-size: 0.72rem;
+  opacity: 0.65;
 }
 
 .chip.selected {
   background: var(--accent-rose);
   border-color: var(--accent-rose);
+  color: #fff;
+}
+
+.chip.selected .chip-icon {
   color: #fff;
 }
 
