@@ -14,6 +14,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 
 const updateReady = ref(false)
 let waitingWorker: ServiceWorker | null = null
+let visibilityHandler: (() => void) | null = null
 
 function onWorkerStateChange() {
   // Quand le SW en attente passe à 'installed' → nouvelle version prête.
@@ -33,21 +34,25 @@ function applyUpdate() {
   }, { once: true })
 }
 
+function checkForUpdate(reg: ServiceWorkerRegistration) {
+  // CAS 0 : aucune mise à jour en attente → on déclenche une vérification
+  // immédiate auprès du serveur (utile pour les visites sans rechargement)
+  if (!reg.waiting && !reg.installing) {
+    reg.update().catch(() => {})
+  }
+  // CAS 1 : un SW en attente existe déjà (mise à jour prête au chargement)
+  if (reg.waiting) {
+    waitingWorker = reg.waiting
+    onWorkerStateChange()
+  }
+}
+
 onMounted(async () => {
   if (!('serviceWorker' in navigator)) return
   try {
     const reg = await navigator.serviceWorker.getRegistration()
     if (!reg) return
-    // CAS 0 : aucune mise à jour en attente → on déclenche une vérification
-    // immédiate auprès du serveur (utile pour les visites sans rechargement)
-    if (!reg.waiting && !reg.installing) {
-      reg.update().catch(() => {})
-    }
-    // CAS 1 : un SW en attente existe déjà (mise à jour prête au chargement)
-    if (reg.waiting) {
-      waitingWorker = reg.waiting
-      onWorkerStateChange()
-    }
+    checkForUpdate(reg)
     // CAS 2 : une mise à jour arrive pendant la session
     reg.addEventListener('updatefound', () => {
       const installing = reg.installing
@@ -55,13 +60,24 @@ onMounted(async () => {
       waitingWorker = installing
       installing.addEventListener('statechange', onWorkerStateChange)
     })
+    // Ré-vérifier quand l'utilisateur revient sur l'onglet
+    visibilityHandler = () => {
+      if (document.visibilityState === 'visible') {
+        checkForUpdate(reg)
+      }
+    }
+    document.addEventListener('visibilitychange', visibilityHandler)
   } catch {
     // jamais bloquer l'app pour la mise à jour
   }
 })
 
 onUnmounted(() => {
-  waitingWorker?.removeEventListener('statechange', onWorkerStateChange)
+  waitingWorker = null
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler)
+    visibilityHandler = null
+  }
 })
 </script>
 
