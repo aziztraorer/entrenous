@@ -113,7 +113,11 @@ const applyLobby = (lobby: Lobby) => {
 const pollLobby = async () => {
   if (!gameId) return
   try {
-    const res = await fetch(apiUrl(`/api/games/${gameId}/lobby`))
+    // Audit : /lobby exige maintenant un JWT — on l'envoie systématiquement
+    const token = localStorage.getItem('sessionToken') ?? ''
+    const res = await fetch(apiUrl(`/api/games/${gameId}/lobby`), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
     if (!res.ok) return
     applyLobby(await res.json())
   } catch {
@@ -123,7 +127,9 @@ const pollLobby = async () => {
 
 const connectSocket = () => {
   try {
-    socket = io(SOCKET_URL, { reconnectionAttempts: 3 })
+    // Middleware Socket.IO : JWT obligatoire au handshake
+    const token = localStorage.getItem('sessionToken') ?? ''
+    socket = io(SOCKET_URL, { auth: { token }, reconnectionAttempts: 3 })
     socket.on('connect', () => {
       socket?.emit('game:join', { gameId })
     })
