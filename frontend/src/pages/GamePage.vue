@@ -594,6 +594,16 @@ button:active {
   animation: pulse 2s ease-in-out infinite;
 }
 
+/* Icônes SVG fluides : s'adaptent à la taille de l'écran au lieu de rester à 48px fixes */
+.waiting-icon svg {
+  width: clamp(56px, 14vw, 96px);
+  height: clamp(56px, 14vw, 96px);
+  border-radius: 50%;
+  background: rgba(192, 122, 122, 0.12);
+  padding: 0.6rem;
+  box-sizing: content-box;
+}
+
 .waiting-other h2 {
   font-family: 'Playfair Display', Georgia, serif;
   font-size: 1.5rem;
